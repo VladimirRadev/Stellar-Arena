@@ -83,6 +83,40 @@ One item per run. The item is burned at `enter`, whatever the outcome.
   snapshots its stake and `winBps` at `enter`, so a parameter change never alters a run in progress. There is no
   owner withdrawal function: VLAD leaves the pool only as payouts and Shield refunds.
 
+## Web app
+
+Live: **https://vladimirradev.github.io/Stellar-Arena/** (GitHub Pages, deployed by `.github/workflows/pages.yml` on
+every push to `main`).
+
+The app in `web/` is a static React page (Vite, React 19, TypeScript, Tailwind CSS 4, wagmi 3, viem 2). It talks to
+Sepolia through public RPC endpoints only and connects to MetaMask; there is no backend. The shared Stellar frame
+(navigation, wallet button, footer, transaction button) lives in `web/src/shell/` and is identical in all five repos.
+
+- **Play tab.** Prize pool, entry fee, payout multiplier and your own runs, wins and payouts. Pick your equipment
+  (none, Sword or Shield; the counts come from the Store's `balanceOf`), approve VLAD once, then enter. The browser
+  creates the secret with `crypto.getRandomValues`, checks its commitment against the contract's `commitmentOf`, saves
+  the secret in `localStorage` before sending, and shows a "Back up your secret" box. A progress bar follows the
+  blocks until the run can be resolved; `resolve` then plays a short canvas fight whose counters land on the on-chain
+  rolls. Open runs from this browser are listed with their own Resolve button, expired ones as forfeited, and a run
+  can be restored from a backed-up secret.
+- **History tab.** The last 50 runs (newest first), a leaderboard by wins over those runs, the fairness explanation,
+  and a "Verify a run" tool: enter a resolved run number and it fetches the block hash and the revealed secret, then
+  recomputes the rolls in the browser and with the contract's `rollsFor`.
+
+Secrets are stored under `stellar-arena:<chainId>:<arenaAddress>:<account>:<runId>`. Clearing site data before a run
+is resolved loses the secret unless you kept the backup.
+
+```bash
+cd web
+npm install
+npm run sync-abi   # after `forge build` in the repo root; copies ABIs into src/abi
+npm run dev        # http://localhost:5173/Stellar-Arena/
+npm run build
+```
+
+After deployment, put the three addresses into `web/src/config/addresses.ts`. While they are zero, the page shows a
+"not deployed yet" banner and switches all on-chain reads off.
+
 ## Contracts
 
 | Contract | Address (Sepolia) |

@@ -1,0 +1,45 @@
+/* Arena-only flourishes on top of the shared Stellar theme: glow, float and the arcade blink. */
+.arena-glow {
+  filter: drop-shadow(0 0 22px rgb(163 230 53 / 0.35));
+}
+
+.arena-float {
+  animation: arena-float 5.5s ease-in-out infinite;
+}
+
+.arena-blink {
+  animation: arena-blink 1.3s steps(1, end) infinite;
+}
+
+.arena-halo {
+  background: radial-gradient(closest-side, rgb(16 185 129 / 0.3), rgb(16 185 129 / 0.08) 62%, transparent 100%);
+  border-radius: 9999px;
+}
+
+@keyframes arena-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes arena-blink {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  61%,
+  100% {
+    opacity: 0.2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arena-float,
+  .arena-blink {
+    animation: none;
+  }
+}
