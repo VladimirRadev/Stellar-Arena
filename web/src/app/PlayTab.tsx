@@ -128,7 +128,7 @@ export function PlayTab({ onShowFairness }: { onShowFairness: () => void }) {
           {result && showResult ? <ResultBanner result={result} onClose={() => setResult(null)} /> : null}
           {!result ? (
             <button type="button" className="link -mt-2 text-xs" onClick={() => onResolved(demoFight())}>
-              Watch a demo fight (off-chain preview, nothing is staked)
+              Watch a demo fight (off-chain, nothing staked)
             </button>
           ) : null}
 
