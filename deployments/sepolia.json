@@ -1,0 +1,48 @@
+{
+  "chainId": 11155111,
+  "deployer": "0xEb0243ea72CB24eFb7128Ee7aca314C080b600c4",
+  "contracts": {
+    "StellarArena": {
+      "address": "TODO",
+      "txHash": "TODO",
+      "block": null,
+      "gasUsed": null,
+      "constructorArgs": {
+        "vlad": "0x49ba857d553ef219B144b200F41acaf8CB6768E9",
+        "store": "TODO",
+        "entryFee": "10000000000000000000",
+        "winBps": 18000
+      }
+    }
+  },
+  "external": {
+    "VladToken": {
+      "address": "0x49ba857d553ef219B144b200F41acaf8CB6768E9",
+      "source": "Stellar-Faucet deployments/sepolia.json"
+    },
+    "StellarStore": {
+      "address": "TODO",
+      "source": "Stellar-Store deployments/sepolia.json"
+    }
+  },
+  "setup": {
+    "grantGameRoleToArena": {
+      "txHash": "TODO",
+      "block": null,
+      "gasUsed": null,
+      "role": "0x6a64baf327d646d1bca72653e2a075d15fd6ac6d8cbd7f6ee03fc55875e0fa88"
+    },
+    "setStoreTreasuryToArena": { "txHash": "TODO", "block": null, "gasUsed": null },
+    "approveSeedPool": { "txHash": "TODO", "block": null, "gasUsed": null, "amount": "1000000000000000000000" },
+    "fundPool": { "txHash": "TODO", "block": null, "gasUsed": null, "amount": "1000000000000000000000" }
+  },
+  "verified": {
+    "StellarArena": { "sourcify": "TODO", "blockscout": "TODO" }
+  },
+  "cost": {
+    "effectiveGasPriceWei": null,
+    "totalGasUsed": null,
+    "totalWei": null
+  },
+  "notes": "Template. Filled in after `forge script script/Deploy.s.sol --broadcast --slow --skip-simulation` (5 transactions: create StellarArena, store.grantRole(GAME_ROLE, arena), store.setTreasury(arena), vlad.approve(arena, 1000 VLAD), arena.fundPool(1000 VLAD))."
+}

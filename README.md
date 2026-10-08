@@ -119,10 +119,12 @@ After deployment, put the three addresses into `web/src/config/addresses.ts`. Wh
 
 ## Contracts
 
+Full deployment record: [`deployments/sepolia.json`](deployments/sepolia.json).
+
 | Contract | Address (Sepolia) |
 |---|---|
-| StellarArena | TODO |
-| $VLAD token (Stellar-Faucet) | TODO |
+| StellarArena | TODO (deployed by `script/Deploy.s.sol`) |
+| $VLAD token (Stellar-Faucet) | [`0x49ba857d553ef219B144b200F41acaf8CB6768E9`](https://eth-sepolia.blockscout.com/address/0x49ba857d553ef219B144b200F41acaf8CB6768E9) |
 | StellarStore (Stellar-Store) | TODO |
 
 ## Development
@@ -133,15 +135,29 @@ forge test -vv
 forge fmt --check
 ```
 
-Deploy (requires the deployer to hold `DEFAULT_ADMIN_ROLE` on the store and at least 1000 VLAD):
+Deploy (requires the deployer to hold `DEFAULT_ADMIN_ROLE` on the store and at least 1000 VLAD). The private key is
+read from an env file outside the repo and is never printed or committed:
 
 ```bash
-export PRIVATE_KEY=... VLAD_TOKEN=0x... STELLAR_STORE=0x... SEPOLIA_RPC_URL=...
-forge script script/Deploy.s.sol --rpc-url "$SEPOLIA_RPC_URL" --broadcast
+set -a; source ~/Downloads/Stellar-deployer.env; set +a
+VLAD_TOKEN=0x49ba857d553ef219B144b200F41acaf8CB6768E9 STELLAR_STORE=<store address> \
+  forge script script/Deploy.s.sol --rpc-url https://ethereum-sepolia-rpc.publicnode.com \
+  --broadcast --slow --skip-simulation --priority-gas-price 10000000 --with-gas-price 1000000000 -vvv
 ```
 
-The script deploys the Arena (entry fee 10 VLAD, payout 1.8×), grants it `GAME_ROLE` on the store, sets the store
-treasury to the Arena, and seeds the prize pool with 1000 VLAD.
+- `--skip-simulation`: Sepolia currently charges contract creation far more gas than forge's local Cancun simulation,
+  so a gas limit taken from the local simulation runs out of gas. Skipping it lets the Sepolia node estimate gas.
+- `--slow`: sends one transaction at a time and waits for each receipt. The deployer is an EIP-7702 delegated account,
+  and nodes accept only one in-flight transaction from it. If a transaction is rejected with "in-flight transaction
+  limit reached for delegated accounts", wait about 20 seconds and rerun the same command with `--resume`.
+
+The script sends five transactions, in this order:
+
+1. create `StellarArena(vlad, store, 10 VLAD entry fee, winBps 18000)`;
+2. `store.grantRole(GAME_ROLE, arena)`, so the Arena can burn items and mint Trophies;
+3. `store.setTreasury(arena)`, so Store sales flow into the prize pool;
+4. `vlad.approve(arena, 1000 VLAD)`;
+5. `arena.fundPool(1000 VLAD)`, the initial prize pool.
 
 ## Part of the Stellar suite
 

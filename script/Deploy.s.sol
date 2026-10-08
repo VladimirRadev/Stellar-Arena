@@ -8,6 +8,8 @@ import {IStellarStore} from "../src/interfaces/IStellarStore.sol";
 
 /// @notice Deploys StellarArena against the already-deployed $VLAD token and StellarStore, wires it in, seeds the pool.
 /// Env: PRIVATE_KEY (deployer; must hold DEFAULT_ADMIN_ROLE on the store and >= 1000 VLAD), VLAD_TOKEN, STELLAR_STORE.
+/// Run with `--broadcast --slow --skip-simulation` (Sepolia prices contract creation far above the local simulation;
+/// the EIP-7702-delegated deployer allows one in-flight tx, so on "in-flight transaction limit" wait ~20 s and `--resume`).
 contract Deploy is Script {
     uint256 constant ENTRY_FEE = 10e18; // 10 VLAD per run
     uint256 constant WIN_BPS = 18_000; // a win pays 1.8x the stake

@@ -25,8 +25,8 @@ export function ArenaApp() {
     <div className="space-y-10 sm:space-y-14">
       {!DEPLOYED ? (
         <div className="rounded-2xl border border-warning/30 bg-warning/[0.06] px-4 py-3 text-sm text-warning">
-          Contracts are not deployed yet. The addresses in <code className="font-mono">config/addresses.ts</code> are
-          placeholders, so on-chain reads are switched off.
+          The Arena is not deployed yet. Its address in <code className="font-mono">config/addresses.ts</code> is still
+          a placeholder, so arena reads are switched off.
         </div>
       ) : null}
 

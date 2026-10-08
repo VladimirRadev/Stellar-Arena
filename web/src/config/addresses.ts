@@ -9,7 +9,7 @@ export const CHAIN_ID = 11155111 as const
  * The zero address is a placeholder: the UI shows a "not deployed yet" state and switches reads off.
  */
 export const addresses = {
-  vladToken: '0x0000000000000000000000000000000000000000',
+  vladToken: '0x49ba857d553ef219B144b200F41acaf8CB6768E9',
   arena: '0x0000000000000000000000000000000000000000',
   store: '0x0000000000000000000000000000000000000000',
 } as const satisfies Record<string, Address>
