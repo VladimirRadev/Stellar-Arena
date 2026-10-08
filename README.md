@@ -1,0 +1,120 @@
+# Stellar Arena — provably fair 'play for keeps' on-chain game (Sepolia)
+
+Stellar Arena is a solo combat game that runs entirely in one smart contract, `StellarArena`, on the Ethereum
+Sepolia testnet. Every run is played for keeps: the entry fee is paid in $VLAD (the "Vladimir" ERC-20 token, 18
+decimals), any item you bring is burned when you enter, and a win pays VLAD plus a Trophy item. The items (Sword,
+Shield, Trophy) are ERC-1155 tokens of the `StellarStore` contract from the Stellar-Store repo.
+
+> "Stellar" is the name of this personal Web3 portfolio suite on Ethereum Sepolia. It is not related to the
+> Stellar (XLM) network.
+
+## How a run works and why it is fair
+
+The contract has to produce a random roll that neither the player nor the block producer (the validator that builds
+a block) can steer. It combines two inputs, each one controlled by a different party, and fixes each input before
+the other one becomes known.
+
+1. **Commit.** Your browser generates a random 32-byte `secret` and keeps it locally. It computes the commitment
+   `commit = keccak256(abi.encode(secret, yourAddress))`. The commitment reveals nothing about the secret.
+2. **Enter.** You call `enter(commit, item)`. The contract burns the item (if any), takes the entry fee (10 VLAD) into
+   escrow, and records the block number of this transaction as `enterBlock`.
+3. **Wait one block.** The block `enterBlock + 1` is produced. Its hash, `blockhash(enterBlock + 1)`, did not exist
+   when you committed, so you could not choose a secret that wins against it.
+4. **Reveal.** From block `enterBlock + 2` onwards you call `resolve(id, secret)`. The contract checks the secret
+   against the commitment, then computes `seed = keccak256(abi.encode(secret, blockhash(enterBlock + 1)))` and
+   derives both rolls from that seed.
+
+Exact block-timing rule:
+
+| Current block | `resolve` result |
+|---|---|
+| `enterBlock` or `enterBlock + 1` | reverts with `TooEarly` (the hash of `enterBlock + 1` is not readable yet) |
+| `enterBlock + 2` … `enterBlock + 251` | allowed (251 = 1 + `REVEAL_WINDOW` of 250 blocks, about 50 minutes on Sepolia) |
+| `enterBlock + 252` and later | reverts with `Expired`; the stake stays in the prize pool |
+
+The window ends at 251 because the EVM only exposes the hashes of the last 256 blocks, so the hash of block
+`enterBlock + 1` must still be readable when `resolve` runs. `canResolve(id)` returns `(ready, expired)` for the UI.
+
+**Why the validator cannot bias the result.** The validator that produces block `enterBlock + 1` can influence that
+block's hash (for example by changing which transactions it includes). But the seed also depends on your secret, and
+the validator only ever sees the commitment, which is a hash. Without the secret, the validator cannot compute which
+block hash would make you lose, so changing the hash gains it nothing. The commitment also includes your address,
+so nobody can copy your commitment and play with it.
+
+**Why the player cannot abort profitably.** After block `enterBlock + 1` exists, you can compute the outcome before
+revealing. If it is a loss, you may choose not to reveal. That does not help you: the entry fee and the item were
+already taken at `enter`, and an unrevealed run simply expires with the stake in the pool. Revealing a loss is never
+worse than not revealing (with a Shield, revealing returns half the stake). Per-player statistics count a run at
+`enter`, so skipping the reveal of a loss does not improve your recorded win rate either.
+
+**Limits.** This scheme assumes the player and the producer of block `enterBlock + 1` are not the same party and do
+not collude: a validator that also knows the secret could try many block hashes. This is acceptable for a testnet
+arcade game. A production game with real value would use a verifiable random function (for example Chainlink VRF).
+Generate a fresh secret for every run; a secret that has already been revealed is public.
+
+**Verify any run yourself.** `rollsFor(secret, blockHash, item)` is a public pure function that applies the exact
+roll formula. Take the secret from the `resolve` transaction input and the block hash from any block explorer.
+
+## The roll and the items
+
+- Player roll: `seed % 100 + 1` (1 to 100). Enemy roll: `(seed >> 128) % 100 + 1` (1 to 100).
+- You win when your roll is strictly higher than the enemy roll. A tie goes to the enemy.
+
+| Item (store id) | Effect | Exact effect on a 10 VLAD run |
+|---|---|---|
+| none (0) | — | win probability 49.50% |
+| Sword (1) | +10 to your roll (`SWORD_BONUS`) | win probability 59.05%; worth ≈ 1.72 VLAD per run |
+| Shield (2) | on a loss, refunds 50% of the stake (`SHIELD_REFUND_BPS = 5000`) | 5 VLAD back on a loss; worth ≈ 2.53 VLAD per run |
+| Trophy (3) | awarded (minted) on every win | — |
+
+One item per run. The item is burned at `enter`, whatever the outcome.
+
+## Prize pool economics
+
+- A win pays `stake × winBps / 10_000`. With the defaults (`entryFee = 10 VLAD`, `winBps = 18_000`) a win pays
+  18 VLAD, which is 1.8 times the stake.
+- With no item the win probability is 49.5%, so the expected return is 0.495 × 1.8 = 0.891 of the stake. The house
+  edge is therefore about 10% (10.9% exactly, because ties go to the enemy).
+- The payout is capped by the pool balance: if the pool holds less than the payout, the winner receives the whole
+  pool. A win always mints the Trophy.
+- The pool is refilled from three sources: lost stakes, anyone calling `fundPool(amount)`, and the Stellar Store,
+  whose treasury is set to the Arena so that every item purchase in VLAD flows into the prize pool.
+- The owner can change `entryFee` and `winBps` (`winBps ≤ 30_000`, `entryFee > 0`) with `setParams`. Every run
+  snapshots its stake and `winBps` at `enter`, so a parameter change never alters a run in progress. There is no
+  owner withdrawal function: VLAD leaves the pool only as payouts and Shield refunds.
+
+## Contracts
+
+| Contract | Address (Sepolia) |
+|---|---|
+| StellarArena | TODO |
+| $VLAD token (Stellar-Faucet) | TODO |
+| StellarStore (Stellar-Store) | TODO |
+
+## Development
+
+```bash
+forge build
+forge test -vv
+forge fmt --check
+```
+
+Deploy (requires the deployer to hold `DEFAULT_ADMIN_ROLE` on the store and at least 1000 VLAD):
+
+```bash
+export PRIVATE_KEY=... VLAD_TOKEN=0x... STELLAR_STORE=0x... SEPOLIA_RPC_URL=...
+forge script script/Deploy.s.sol --rpc-url "$SEPOLIA_RPC_URL" --broadcast
+```
+
+The script deploys the Arena (entry fee 10 VLAD, payout 1.8×), grants it `GAME_ROLE` on the store, sets the store
+treasury to the Arena, and seeds the prize pool with 1000 VLAD.
+
+## Part of the Stellar suite
+
+| Repo | Site |
+|---|---|
+| [Stellar-Faucet](https://github.com/VladimirRadev/Stellar-Faucet) | https://vladimirradev.github.io/Stellar-Faucet/ |
+| [Stellar-LP-Staking](https://github.com/VladimirRadev/Stellar-LP-Staking) | https://vladimirradev.github.io/Stellar-LP-Staking/ |
+| [Stellar-Bank](https://github.com/VladimirRadev/Stellar-Bank) | https://vladimirradev.github.io/Stellar-Bank/ |
+| [Stellar-Store](https://github.com/VladimirRadev/Stellar-Store) | https://vladimirradev.github.io/Stellar-Store/ |
+| [Stellar-Arena](https://github.com/VladimirRadev/Stellar-Arena) | https://vladimirradev.github.io/Stellar-Arena/ |
