@@ -3,13 +3,13 @@
   "deployer": "0xEb0243ea72CB24eFb7128Ee7aca314C080b600c4",
   "contracts": {
     "StellarArena": {
-      "address": "TODO",
-      "txHash": "TODO",
-      "block": null,
-      "gasUsed": null,
+      "address": "0xE79302DAebc28297745afC206553afBeD9d04d60",
+      "txHash": "0xea5604acd986797130261c73b88fd1a73a38096ecf4cd1ac380664e53e435d33",
+      "block": 11870427,
+      "gasUsed": 9300048,
       "constructorArgs": {
         "vlad": "0x49ba857d553ef219B144b200F41acaf8CB6768E9",
-        "store": "TODO",
+        "store": "0xc1F24EF5887bD340E0d992e8557A4b6E977f151b",
         "entryFee": "10000000000000000000",
         "winBps": 18000
       }
@@ -21,28 +21,53 @@
       "source": "Stellar-Faucet deployments/sepolia.json"
     },
     "StellarStore": {
-      "address": "TODO",
+      "address": "0xc1F24EF5887bD340E0d992e8557A4b6E977f151b",
       "source": "Stellar-Store deployments/sepolia.json"
     }
   },
   "setup": {
     "grantGameRoleToArena": {
-      "txHash": "TODO",
-      "block": null,
-      "gasUsed": null,
+      "txHash": "0xa32379f96677a13fe94e05dddea3b63be4ea9f33b8999562b148c647435818de",
+      "block": 11870431,
+      "gasUsed": 133511,
       "role": "0x6a64baf327d646d1bca72653e2a075d15fd6ac6d8cbd7f6ee03fc55875e0fa88"
     },
-    "setStoreTreasuryToArena": { "txHash": "TODO", "block": null, "gasUsed": null },
-    "approveSeedPool": { "txHash": "TODO", "block": null, "gasUsed": null, "amount": "1000000000000000000000" },
-    "fundPool": { "txHash": "TODO", "block": null, "gasUsed": null, "amount": "1000000000000000000000" }
+    "setStoreTreasuryToArena": {
+      "txHash": "0xe78a501dd99e41854cccf6b86a262865fcc6149b5e31394e43add1684ca0b2f6",
+      "block": 11870432,
+      "gasUsed": 31538
+    },
+    "approveSeedPool": {
+      "txHash": "0xeac001ee36b290c4ef1ae50d85b4cda5a43860934fafab3af40ccad7e6b3a720",
+      "block": 11870433,
+      "gasUsed": 128328,
+      "amount": "1000000000000000000000"
+    },
+    "fundPool": {
+      "txHash": "0xac3b141c6e0563b422231d257e09bdcc38622cfaa5821fad64f46b417a641843",
+      "block": 11870434,
+      "gasUsed": 149204,
+      "amount": "1000000000000000000000"
+    }
   },
   "verified": {
-    "StellarArena": { "sourcify": "TODO", "blockscout": "TODO" }
+    "StellarArena": {
+      "sourcify": "exact_match",
+      "blockscout": "Pass - Verified (is_fully_verified = true)"
+    }
   },
   "cost": {
-    "effectiveGasPriceWei": null,
-    "totalGasUsed": null,
-    "totalWei": null
+    "effectiveGasPriceWei": 10000015,
+    "totalGasUsed": 9742629,
+    "totalWei": "97426435696854"
   },
-  "notes": "Template. Filled in after `forge script script/Deploy.s.sol --broadcast --slow --skip-simulation` (5 transactions: create StellarArena, store.grantRole(GAME_ROLE, arena), store.setTreasury(arena), vlad.approve(arena, 1000 VLAD), arena.fundPool(1000 VLAD))."
+  "notes": "Five transactions (deployer nonce 7 -> 12) sent with forge script --broadcast --slow --skip-simulation. The create (nonce 7) was mined; the next send was rejected by the node with 'in-flight transaction limit reached for delegated accounts' (EIP-7702 deployer, not mined, no gas spent), so after ~20 s the same command was rerun with --resume and sent the remaining four. Effective gas price ~0.01 gwei.",
+  "readBack": {
+    "entryFee": "10000000000000000000",
+    "winBps": 18000,
+    "prizePool": "1000000000000000000000",
+    "owner": "0xEb0243ea72CB24eFb7128Ee7aca314C080b600c4",
+    "storeTreasury": "0xE79302DAebc28297745afC206553afBeD9d04d60",
+    "storeHasGameRole": true
+  }
 }

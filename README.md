@@ -123,9 +123,9 @@ Full deployment record: [`deployments/sepolia.json`](deployments/sepolia.json).
 
 | Contract | Address (Sepolia) |
 |---|---|
-| StellarArena | TODO (deployed by `script/Deploy.s.sol`) |
+| StellarArena | [`0xE79302DAebc28297745afC206553afBeD9d04d60`](https://eth-sepolia.blockscout.com/address/0xE79302DAebc28297745afC206553afBeD9d04d60) |
 | $VLAD token (Stellar-Faucet) | [`0x49ba857d553ef219B144b200F41acaf8CB6768E9`](https://eth-sepolia.blockscout.com/address/0x49ba857d553ef219B144b200F41acaf8CB6768E9) |
-| StellarStore (Stellar-Store) | TODO |
+| StellarStore (Stellar-Store) | [`0xc1F24EF5887bD340E0d992e8557A4b6E977f151b`](https://eth-sepolia.blockscout.com/address/0xc1F24EF5887bD340E0d992e8557A4b6E977f151b) |
 
 ## Development
 
@@ -140,7 +140,7 @@ read from an env file outside the repo and is never printed or committed:
 
 ```bash
 set -a; source ~/Downloads/Stellar-deployer.env; set +a
-VLAD_TOKEN=0x49ba857d553ef219B144b200F41acaf8CB6768E9 STELLAR_STORE=<store address> \
+VLAD_TOKEN=0x49ba857d553ef219B144b200F41acaf8CB6768E9 STELLAR_STORE=0xc1F24EF5887bD340E0d992e8557A4b6E977f151b \
   forge script script/Deploy.s.sol --rpc-url https://ethereum-sepolia-rpc.publicnode.com \
   --broadcast --slow --skip-simulation --priority-gas-price 10000000 --with-gas-price 1000000000 -vvv
 ```
