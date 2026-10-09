@@ -5,6 +5,9 @@ Sepolia testnet. Every run is played for keeps: the entry fee is paid in $VLAD (
 decimals), any item you bring is burned when you enter, and a win pays VLAD plus a Trophy item. The items (Sword,
 Shield, Trophy) are ERC-1155 tokens of the `StellarStore` contract from the Stellar-Store repo.
 
+The repo also contains `StellarArcade`, a 29-cabinet arcade that uses the same fairness scheme, the same items and
+its own prize pool; see [Arcade (29 cabinets)](#arcade-29-cabinets).
+
 > "Stellar" is the name of this personal Web3 portfolio suite on Ethereum Sepolia. It is not related to the
 > Stellar (XLM) network.
 
@@ -82,6 +85,154 @@ One item per run. The item is burned at `enter`, whatever the outcome.
 - The owner can change `entryFee` and `winBps` (`winBps ≤ 30_000`, `entryFee > 0`) with `setParams`. Every run
   snapshots its stake and `winBps` at `enter`, so a parameter change never alters a run in progress. There is no
   owner withdrawal function: VLAD leaves the pool only as payouts and Shield refunds.
+
+## Arcade (29 cabinets)
+
+`StellarArcade` (`src/StellarArcade.sol`) is a second game contract in this repo. It runs 29 small "cabinets" on one
+engine. Every cabinet uses the same commit-reveal flow and the same block-timing rule as the Arena, and all cabinets
+share one prize pool. Status: the contract, its 13 tests and the deploy script are in this repo; the contract is not
+deployed to Sepolia yet.
+
+### How an Arcade run works
+
+1. Your browser generates a random 32-byte `secret` and computes `commit = keccak256(abi.encode(secret, yourAddress))`
+   (the same `commitmentOf` as the Arena).
+2. You call `enter(gameId, commit, item, choice)`. `gameId` selects the cabinet (0 to 28). `item` is 0 (none),
+   1 (Sword) or 2 (Shield); the item is burned through `store.consume`. `choice` is your lane (0 to 3) on RACE
+   cabinets and is ignored by the other kinds. The contract takes the cabinet's entry fee (10 VLAD) into escrow and
+   records `enterBlock`.
+3. From block `enterBlock + 2` through block `enterBlock + 251` you call `resolve(runId, secret)`. Before that it
+   reverts with `TooEarly`; after that it reverts with `Expired` and the stake stays in the pool. This is exactly the
+   Arena's timing table above; `canResolve(runId)` returns `(ready, expired)`.
+4. `resolve` computes `seed = keccak256(abi.encode(secret, blockhash(enterBlock + 1)))`, applies the rule of the
+   cabinet's kind (table below), pays the payout in VLAD and, on a WIN or JACKPOT, mints a Trophy through
+   `store.award`.
+
+The fairness argument is the Arena's: the player fixes the secret before block `enterBlock + 1` exists, and the
+validator that produces that block only ever sees the commitment, never the secret. The same limit applies too: a
+player who also produces block `enterBlock + 1` could try many block hashes, so this design is for a testnet arcade,
+not for real value (that would need a verifiable random function such as Chainlink VRF).
+
+### The five kinds and their payouts
+
+Every cabinet belongs to one kind. The payout is a multiple of the stake (10 VLAD on every cabinet). "Return" is the
+expected payout per VLAD staked without items; 1 minus the return is the house edge.
+
+| Kind | Rule (from `seed`) | Outcomes and probabilities | Payout | Return |
+|---|---|---|---|---|
+| DUEL | win if `seed % 100 < 48` | WIN 48%, LOSE 52% | WIN 1.8x (18 VLAD) | 0.864 |
+| TIERS | `r = seed % 1000` | JACKPOT `r < 20` (2%), WIN `r < 200` (18%), REFUND `r < 450` (25%), LOSE 55% | JACKPOT 5x, WIN 1.5x, REFUND 1x | 0.620 |
+| RACE | winning lane `= seed % 4`, you picked `choice` (must be 0 to 3, else `BadChoice`) | WIN 25%, LOSE 75% | WIN 3.6x (36 VLAD) | 0.900 |
+| HIGHCARD | your card `seed % 52`, house card `(seed >> 64) % 52`, rank `= card % 13` (0 = two, 12 = ace) | higher rank WIN ≈ 46.15% (6/13), same rank REFUND ≈ 7.69% (1/13), lower LOSE ≈ 46.15% | WIN 1.9x, REFUND 1x | ≈ 0.954 |
+| EXTRACT | win if `seed % 100 < 35` | WIN 35%, LOSE 65% | WIN 2.6x (26 VLAD) | 0.910 |
+
+Each cabinet stores its own `winChancePct` (DUEL and EXTRACT only) and `winBps` (the WIN multiplier in basis points),
+so the table shows the values the deploy script registers. The TIERS jackpot is fixed at 5x (`JACKPOT_BPS = 50_000`)
+in the contract.
+
+### Items in the Arcade
+
+| Item (store id) | Effect in the Arcade | Exact effect on a 10 VLAD run |
+|---|---|---|
+| Sword (1) | adds 10 points to the win chance; accepted only on DUEL and EXTRACT (`enter` reverts with `BadItem` elsewhere, so a Sword is never burned for nothing) | DUEL 48% → 58%, EXTRACT 35% → 45% |
+| Shield (2) | on a LOSE, returns 50% of the stake (`SHIELD_REFUND_BPS = 5000`); a REFUND already returns the full stake, so the Shield adds nothing there | 5 VLAD back on a loss |
+| Trophy (3) | minted on every WIN and JACKPOT; not usable as equipment | — |
+
+One item per run, burned at `enter` whatever the outcome. The Store sells the Sword for 25 VLAD and the Shield for
+40 VLAD, so on a 10 VLAD run an item is worth less than its price (the largest expected Shield value is
+0.75 × 5 = 3.75 VLAD per run, on RACE, where 75% of runs lose).
+
+### Prize pool and administration
+
+- The prize pool is the Arcade's own VLAD balance (`prizePool()`), shared by all 29 cabinets. It is seeded with
+  1,000 VLAD at deployment and refilled by lost stakes and by anyone calling `fundPool(amount)`. The Store's treasury
+  stays the Arena, so item purchases refill the Arena pool, not the Arcade pool.
+- A payout is capped by the pool: if the pool holds less than the payout, the player receives the whole pool (the
+  Trophy is still minted).
+- The constructor's third argument, `maxEntryFee` (10 VLAD), caps every cabinet's entry fee, so the largest single
+  payout is 5 × 10 = 50 VLAD (a TIERS jackpot).
+- The owner registers cabinets in one transaction with `addGames(Game[])` and can replace one with `setGame(gameId,
+  game)`, which also opens or closes it (`active`). Both validate the rules: a WIN must pay more than 1x and at most
+  5x, DUEL and EXTRACT need a win chance of 1 to 90 percent (so a Sword keeps it at most 100), and the other kinds
+  must leave the win chance at 0. Every run snapshots the cabinet's kind, win chance and `winBps` at `enter`, so
+  `setGame` never changes a run in progress. There is no owner withdrawal function: VLAD leaves the pool only as
+  payouts, refunds and Shield returns.
+- Statistics: `gameStats(gameId)` and `stats(player)` return `(runs, wins, wagered, paidOut)`. A run counts at
+  `enter`, so an unrevealed loss still counts; `wins` counts WIN and JACKPOT; `paidOut` includes refunds and Shield
+  returns.
+
+### Verify any Arcade run
+
+`rollsFor(gameId, secret, blockHash, item, choice)` is a public view function that applies the exact formula and
+returns `(outcome, payoutBps, roll, houseRoll)`: the outcome (0 LOSE, 1 REFUND, 2 WIN, 3 JACKPOT), the payout in
+basis points of the stake before the pool cap (Shield included), and the two numbers behind it (DUEL and EXTRACT:
+your d100 roll 0 to 99 and the win threshold; TIERS: the roll 0 to 999; RACE: the winning lane and your lane;
+HIGHCARD: your card and the house card, 0 to 51). Take the secret from the `resolve` transaction input and the block
+hash from any explorer. `rollsFor` uses the cabinet's current rules; `getRun(runId)` holds the rules the run actually
+used, which differ only if `setGame` changed the cabinet after that run's `enter`.
+
+### The 29 cabinets
+
+The cabinet names and all artwork are our own. Each cabinet is inspired by a third-party Web3 game listed in the
+"In the wild" section of [ekvahlabs.com](https://ekvahlabs.com/); the links below go to those games' own sites. This
+project is not affiliated with any of them.
+
+| id | Cabinet | Genre | Kind | Inspired by |
+|---|---|---|---|---|
+| 0 | Axolotl Clash | RPG | DUEL | [Axie Infinity](https://axieinfinity.com/) |
+| 1 | Shard Hunt | RPG | TIERS | [Illuvium](https://illuvium.io/) |
+| 2 | Pantheon Draw | CARD | HIGHCARD | [Gods Unchained](https://godsunchained.com/) |
+| 3 | Voxel Dig | STRATEGY | TIERS | [The Sandbox](https://www.sandbox.game/) |
+| 4 | Land Rush | RPG | RACE | [Decentraland](https://decentraland.org/) |
+| 5 | Time Raid | ACTION | DUEL | [Big Time](https://playbigtime.com/) |
+| 6 | Harvest Moon Run | RPG | TIERS | [Pixels](https://www.pixels.xyz/) |
+| 7 | Parallel Draft | CARD | HIGHCARD | [Parallel](https://parallel.life/) |
+| 8 | Guardian Dungeon | ACTION | DUEL | [Guild of Guardians](https://www.guildofguardians.com/) |
+| 9 | Warp Race | STRATEGY | RACE | [Star Atlas](https://staratlas.com/) |
+| 10 | Hooligan Havoc | ACTION | DUEL | [My Pet Hooligan](https://mypethooligan.com/) |
+| 11 | Grid Extraction | SURVIVAL | EXTRACT | [Off The Grid](https://gunzillagames.com/) |
+| 12 | Portal Summon | RPG | TIERS | [Aavegotchi](https://aavegotchi.com/) |
+| 13 | Kitty Breeding | CARD | TIERS (jackpot = rare trait) | [CryptoKitties](https://www.cryptokitties.co/) |
+| 14 | Monster Catch | RPG | DUEL | [Chainmonsters](https://chainmonsters.com/) |
+| 15 | Alice's Garden | STRATEGY | TIERS | [My Neighbor Alice](https://www.myneighboralice.com/) |
+| 16 | Deep Mine | ACTION | TIERS | [Mines of Dalarnia](https://www.minesofdalarnia.com/) |
+| 17 | Alien Mining | SURVIVAL | EXTRACT | [Alien Worlds](https://alienworlds.io/) |
+| 18 | Splinter Clash | CARD | HIGHCARD | [Splinterlands](https://splinterlands.com/) |
+| 19 | Nine Expeditions | RPG | DUEL | [Nine Chronicles](https://nine-chronicles.com/) |
+| 20 | Shrapnel Drop | ACTION | RACE | [Shrapnel](https://www.shrapnel.com/) |
+| 21 | Aurory Tactics | RPG | DUEL | [Aurory](https://www.aurory.io/) |
+| 22 | Beacon Trial | RPG | DUEL | [The Beacon](https://playthebeacon.com/) |
+| 23 | Ember Duel | RPG | DUEL | [Ember Sword](https://embersword.com/) |
+| 24 | Moonray Clash | ACTION | DUEL | [Moonray](https://moonray.game/) |
+| 25 | Mech Sortie | ACTION | RACE | [MetalCore](https://www.metalcore.gg/) |
+| 26 | Unicorn Joust | STRATEGY | DUEL | [Crypto Unicorns](https://www.cryptounicorns.fun/) |
+| 27 | Mavia Siege | STRATEGY | TIERS | [Heroes of Mavia](https://www.mavia.game/) |
+| 28 | Dragon Hatch | STRATEGY | TIERS | [Eternal Dragons](https://www.eternaldragons.com/) |
+
+Totals: 11 DUEL, 9 TIERS, 4 RACE, 3 HIGHCARD, 2 EXTRACT. Genre ids in the contract: 0 RPG, 1 CARD, 2 STRATEGY,
+3 ACTION, 4 SURVIVAL, 5 RACING (RACING is reserved; no cabinet uses it yet).
+
+### Deploy the Arcade
+
+`script/DeployArcade.s.sol` uses the same env file and flags as the Arena deploy (the deployer must hold
+`DEFAULT_ADMIN_ROLE` on the store and at least 1000 VLAD):
+
+```bash
+set -a; source ~/Downloads/Stellar-deployer.env; set +a
+VLAD_TOKEN=0x49ba857d553ef219B144b200F41acaf8CB6768E9 STELLAR_STORE=0xc1F24EF5887bD340E0d992e8557A4b6E977f151b \
+  forge script script/DeployArcade.s.sol --rpc-url https://ethereum-sepolia-rpc.publicnode.com \
+  --broadcast --slow --skip-simulation --priority-gas-price 10000000 --with-gas-price 1000000000 -vvv
+```
+
+The script sends five transactions, in this order:
+
+1. create `StellarArcade(vlad, store, maxEntryFee = 10 VLAD)` (about 2.3 M gas in a local run);
+2. `arcade.addGames(...)` with all 29 cabinets in one call (about 1.6 M gas in a local run);
+3. `store.grantRole(GAME_ROLE, arcade)`, so the Arcade can burn items and mint Trophies;
+4. `vlad.approve(arcade, 1000 VLAD)`;
+5. `arcade.fundPool(1000 VLAD)`, the initial Arcade prize pool.
+
+It does not call `store.setTreasury`: the Store's sale proceeds keep flowing to the Arena.
 
 ## Web app
 
