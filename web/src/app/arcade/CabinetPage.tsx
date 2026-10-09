@@ -33,6 +33,7 @@ import {
   formatChance,
   isWin,
   oddsFor,
+  runsAndWins,
   swordAllowed,
   type ArcadeResult,
   type Cabinet,
@@ -121,7 +122,7 @@ export function CabinetPage({
           <span className="chip font-mono text-xs">{formatToken(rules.entryFee)} VLAD / run</span>
           {cabinetStats ? (
             <span className="chip font-mono text-xs">
-              {cabinetStats.runs.toString()} runs · {cabinetStats.wins.toString()} wins
+              {runsAndWins(cabinetStats.runs, cabinetStats.wins)}
             </span>
           ) : null}
           {!rules.active ? <span className="chip border-warning/40 text-xs text-warning">closed</span> : null}

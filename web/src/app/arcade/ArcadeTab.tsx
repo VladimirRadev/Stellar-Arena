@@ -9,6 +9,7 @@ import {
   GENRE_COLOR,
   arcadeContract,
   defaultRules,
+  runsAndWins,
   type ArcadeResult,
   type GameRules,
   type GenreName,
@@ -183,7 +184,7 @@ function CabinetGrid({
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filter by genre">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by genre">
           {(['ALL', ...GENRES] as const).map((g) => (
             <button
               key={g}
@@ -262,7 +263,7 @@ function CabinetGrid({
                 <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/60 pt-3 font-mono text-xs">
                   <span className="text-text">{formatToken(rules.entryFee)} VLAD</span>
                   <span className="text-muted">
-                    {stats ? `${stats.runs.toString()} runs · ${stats.wins.toString()} wins` : ARCADE_DEPLOYED ? '…' : 'not live yet'}
+                    {stats ? runsAndWins(stats.runs, stats.wins) : ARCADE_DEPLOYED ? '…' : 'not live yet'}
                   </span>
                 </div>
               </li>

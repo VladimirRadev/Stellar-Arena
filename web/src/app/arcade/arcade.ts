@@ -129,6 +129,11 @@ export const GENRE_COLOR: Record<GenreName, string> = {
   RACING: '#a3e635',
 }
 
+/** "1 run · 0 wins": a cabinet's run and win counters with singular/plural nouns. */
+export function runsAndWins(runs: bigint, wins: bigint): string {
+  return `${runs.toString()} ${runs === 1n ? 'run' : 'runs'} · ${wins.toString()} ${wins === 1n ? 'win' : 'wins'}`
+}
+
 /** Static rules for a cabinet before the contract is deployed. */
 export function defaultRules(cab: Cabinet): GameRules {
   const d = DEFAULT_RULES[cab.kind]
