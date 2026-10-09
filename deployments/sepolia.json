@@ -13,6 +13,71 @@
         "entryFee": "10000000000000000000",
         "winBps": 18000
       }
+    },
+    "StellarArcade": {
+      "address": "0x64dc8Df451Da01ab2460584f04C29D2df517ac4b",
+      "txHash": "0x6734d366203608d96ca10a11fab6cd39e74b29d54208a23ab4e2a186068419c6",
+      "block": 11876092,
+      "gasUsed": 15925068,
+      "constructorArgs": {
+        "vlad": "0x49ba857d553ef219B144b200F41acaf8CB6768E9",
+        "store": "0xc1F24EF5887bD340E0d992e8557A4b6E977f151b",
+        "maxEntryFee": "10000000000000000000"
+      },
+      "setup": {
+        "addGames": {
+          "txHash": "0x0198390185f0ecb29bb1e96a5ce713aed7a94215e909ad5cda105daa10d5ffef",
+          "block": 11876093,
+          "gasUsed": 6799758,
+          "cabinets": 29
+        },
+        "grantGameRoleToArcade": {
+          "txHash": "0x0a8ddc96cb433156261f27f2ea73879d0f7d0802f0f512e3c7c448d517340e70",
+          "block": 11876094,
+          "gasUsed": 133511,
+          "role": "0x6a64baf327d646d1bca72653e2a075d15fd6ac6d8cbd7f6ee03fc55875e0fa88"
+        },
+        "approveSeedPool": {
+          "txHash": "0x4c41f34491aaf3f9949885e5f8e2d318f8dd4a29c4d9e1ee0c30c2c7aea35f82",
+          "block": 11876095,
+          "gasUsed": 128328,
+          "amount": "1000000000000000000000"
+        },
+        "fundPool": {
+          "txHash": "0xd7d42e3491f5550668be6d7e8923fed9e92f2830daeb3211fd4a6597952f73d8",
+          "block": 11876096,
+          "gasUsed": 149204,
+          "amount": "1000000000000000000000"
+        }
+      },
+      "cost": {
+        "effectiveGasPriceWei": 10000046,
+        "totalGasUsed": 23135869,
+        "totalWei": "231359761460775"
+      },
+      "notes": "Five transactions (deployer nonce 37 -> 41) sent on 2026-10-09 with forge script script/DeployArcade.s.sol --broadcast --slow --skip-simulation; all five were accepted on the first run (no --resume needed). Base fee before sending: 47 wei. The store treasury was left unchanged (still the Arena).",
+      "readBack": {
+        "owner": "0xEb0243ea72CB24eFb7128Ee7aca314C080b600c4",
+        "maxEntryFee": "10000000000000000000",
+        "gameCount": 29,
+        "prizePool": "1000000000000000000000",
+        "storeHasGameRole": true,
+        "storeTreasury": "0xE79302DAebc28297745afC206553afBeD9d04d60",
+        "tiersBands": [
+          30,
+          330,
+          630
+        ],
+        "runtimeCodeBytes": 10018,
+        "sampleCabinets": {
+          "0": "Axolotl Clash, RPG, DUEL, 48%, 1.8x",
+          "2": "Pantheon Draw, CARD, HIGHCARD, 1.9x",
+          "4": "Land Rush, RPG, RACE, 3.6x",
+          "11": "Grid Extraction, SURVIVAL, EXTRACT, 35%, 2.6x",
+          "13": "Kitty Breeding, CARD, TIERS, 1.5x",
+          "28": "Dragon Hatch, STRATEGY, TIERS, 1.5x"
+        }
+      }
     }
   },
   "external": {
@@ -52,6 +117,10 @@
   },
   "verified": {
     "StellarArena": {
+      "sourcify": "exact_match",
+      "blockscout": "Pass - Verified (is_fully_verified = true)"
+    },
+    "StellarArcade": {
       "sourcify": "exact_match",
       "blockscout": "Pass - Verified (is_fully_verified = true)"
     }

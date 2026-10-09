@@ -90,8 +90,9 @@ One item per run. The item is burned at `enter`, whatever the outcome.
 
 `StellarArcade` (`src/StellarArcade.sol`) is a second game contract in this repo. It runs 29 small "cabinets" on one
 engine. Every cabinet uses the same commit-reveal flow and the same block-timing rule as the Arena, and all cabinets
-share one prize pool. Status: the contract, its 13 tests and the deploy script are in this repo; the contract is not
-deployed to Sepolia yet.
+share one prize pool. It is deployed on Sepolia at [`0x64dc8Df451Da01ab2460584f04C29D2df517ac4b`](https://eth-sepolia.blockscout.com/address/0x64dc8Df451Da01ab2460584f04C29D2df517ac4b)
+(verified on Sourcify and Blockscout, deployed 2026-10-09 in block 11876092); the full record is in
+[`deployments/sepolia.json`](deployments/sepolia.json).
 
 ### How an Arcade run works
 
@@ -232,13 +233,17 @@ VLAD_TOKEN=0x49ba857d553ef219B144b200F41acaf8CB6768E9 STELLAR_STORE=0xc1F24EF588
   --broadcast --slow --skip-simulation --priority-gas-price 10000000 --with-gas-price 1000000000 -vvv
 ```
 
-The script sends five transactions, in this order:
+The script sends five transactions, in this order. The hashes and gas figures are from the Sepolia deployment of
+2026-10-09 (deployer nonce 37 to 41, all five accepted on the first run, 23,135,869 gas in total, about 0.00023 ETH
+at an effective gas price of about 0.01 gwei):
 
-1. create `StellarArcade(vlad, store, maxEntryFee = 10 VLAD)` (about 2.3 M gas in a local run);
-2. `arcade.addGames(...)` with all 29 cabinets in one call (about 1.6 M gas in a local run);
-3. `store.grantRole(GAME_ROLE, arcade)`, so the Arcade can burn items and mint Trophies;
-4. `vlad.approve(arcade, 1000 VLAD)`;
-5. `arcade.fundPool(1000 VLAD)`, the initial Arcade prize pool.
+1. create `StellarArcade(vlad, store, maxEntryFee = 10 VLAD)`: [`0x6734d366…`](https://eth-sepolia.blockscout.com/tx/0x6734d366203608d96ca10a11fab6cd39e74b29d54208a23ab4e2a186068419c6), 15,925,068 gas (a local
+   simulation estimates about 2.3 M; Sepolia charges contract creation far more, hence `--skip-simulation`);
+2. `arcade.addGames(...)` with all 29 cabinets in one call: [`0x01983901…`](https://eth-sepolia.blockscout.com/tx/0x0198390185f0ecb29bb1e96a5ce713aed7a94215e909ad5cda105daa10d5ffef), 6,799,758 gas;
+3. `store.grantRole(GAME_ROLE, arcade)`, so the Arcade can burn items and mint Trophies:
+   [`0x0a8ddc96…`](https://eth-sepolia.blockscout.com/tx/0x0a8ddc96cb433156261f27f2ea73879d0f7d0802f0f512e3c7c448d517340e70), 133,511 gas;
+4. `vlad.approve(arcade, 1000 VLAD)`: [`0x4c41f344…`](https://eth-sepolia.blockscout.com/tx/0x4c41f34491aaf3f9949885e5f8e2d318f8dd4a29c4d9e1ee0c30c2c7aea35f82), 128,328 gas;
+5. `arcade.fundPool(1000 VLAD)`, the initial Arcade prize pool: [`0xd7d42e34…`](https://eth-sepolia.blockscout.com/tx/0xd7d42e3491f5550668be6d7e8923fed9e92f2830daeb3211fd4a6597952f73d8), 149,204 gas.
 
 It does not call `store.setTreasury`: the Store's sale proceeds keep flowing to the Arena.
 
@@ -283,6 +288,7 @@ Full deployment record: [`deployments/sepolia.json`](deployments/sepolia.json).
 | Contract | Address (Sepolia) |
 |---|---|
 | StellarArena | [`0xE79302DAebc28297745afC206553afBeD9d04d60`](https://eth-sepolia.blockscout.com/address/0xE79302DAebc28297745afC206553afBeD9d04d60) |
+| StellarArcade (29 cabinets) | [`0x64dc8Df451Da01ab2460584f04C29D2df517ac4b`](https://eth-sepolia.blockscout.com/address/0x64dc8Df451Da01ab2460584f04C29D2df517ac4b) |
 | $VLAD token (Stellar-Faucet) | [`0x49ba857d553ef219B144b200F41acaf8CB6768E9`](https://eth-sepolia.blockscout.com/address/0x49ba857d553ef219B144b200F41acaf8CB6768E9) |
 | StellarStore (Stellar-Store) | [`0xc1F24EF5887bD340E0d992e8557A4b6E977f151b`](https://eth-sepolia.blockscout.com/address/0xc1F24EF5887bD340E0d992e8557A4b6E977f151b) |
 
