@@ -103,7 +103,7 @@ export function ArcadeHistory() {
           <p className="eyebrow">Arcade log</p>
           <h3 className="mt-1.5 text-2xl font-semibold">Last 50 arcade runs</h3>
         </div>
-        <p className="text-sm text-muted">{next.data !== undefined ? `${next.data.toString()} runs all time` : 'newest first'}</p>
+        <p className="text-sm text-muted">{next.data !== undefined ? `${next.data.toString()} ${next.data === 1n ? 'run' : 'runs'} all time` : 'newest first'}</p>
       </div>
       {!ARCADE_DEPLOYED ? (
         <Empty text="Arcade runs appear here once the Arcade contract is deployed." />

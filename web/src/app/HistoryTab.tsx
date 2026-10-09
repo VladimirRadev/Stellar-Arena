@@ -172,7 +172,7 @@ function RecentRuns({
           <p className="eyebrow">Arena log</p>
           <h2 className="mt-1.5 text-2xl font-semibold">Last 50 runs</h2>
         </div>
-        <p className="text-sm text-muted">{total !== undefined ? `${total.toString()} runs all time` : 'newest first'}</p>
+        <p className="text-sm text-muted">{total !== undefined ? `${total.toString()} ${total === 1n ? 'run' : 'runs'} all time` : 'newest first'}</p>
       </div>
 
       {!DEPLOYED ? (
