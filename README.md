@@ -337,6 +337,22 @@ End-to-end run on Ethereum Sepolia on 2026-10-09 from the deployer `0xEb0243ea72
 - Step 17 arena enter: run #0 entered in block 11876073 with a Sword, stake 10 VLAD
 - Step 18 arena resolve: run #0: playerRoll 62 (d100 + 10 Sword bonus) vs enemyRoll 40 -> WON; payout 18 VLAD; hash block 11876074
 
+## Smoke tests (2026-10-09, Phase B)
+
+End-to-end run on Ethereum Sepolia on 2026-10-09 from the deployer `0xEb0243ea72CB24eFb7128Ee7aca314C080b600c4` (an EIP-7702 delegated EOA), with `smoke-b.sh` (9 transactions across StellarArcade, StellarOracle and StellarPredict, one at a time, each waiting for its receipt). After every transaction the script compared balances, events and contract state at the transaction's block with the block before it; "ok" means every such assertion passed. Step numbers are the order in that run. For each resolve the script also recomputed the result itself from `keccak256(abi.encode(secret, blockhash(enterBlock + 1)))` and compared it with `rollsFor` and the `Resolved` event. Rows for the Arcade (`StellarArcade` `0x64dc8Df451Da01ab2460584f04C29D2df517ac4b`; step 1 is the VLAD approval, no item was used):
+
+| Step | Function | Result | Tx (Blockscout) | Gas used |
+|---|---|---|---|---|
+| 1 | `vlad.approve(arcade, 30e18)` | ok | [`0x017b23db…285d51`](https://eth-sepolia.blockscout.com/tx/0x017b23db00a50d4830500d8b6ae665b67973eb2f0100bf4f5b36548ac4285d51) | 128328 |
+| 2 | `arcade.enter(0, commit1, 0, 0)` | ok | [`0x22d16de6…420cc0`](https://eth-sepolia.blockscout.com/tx/0x22d16de69000f735d5ee33f7658cd500baa9c1ef902945aa5b871e36de420cc0) | 1065063 |
+| 3 | `arcade.resolve(0, secret1)` | ok | [`0x7515c506…cbb66f`](https://eth-sepolia.blockscout.com/tx/0x7515c506f322d1eebcf58b601fbd108c7a444b89059f85e32e519137f5cbb66f) | 565928 |
+| 4 | `arcade.enter(4, commit2, 0, 2)` | ok | [`0x1f126a56…8e0747`](https://eth-sepolia.blockscout.com/tx/0x1f126a56ecc84917aec182d42f5e5512ca7d8fe711bd3d8dac78a74a8b8e0747) | 771347 |
+| 5 | `arcade.resolve(1, secret2)` | ok | [`0xe2eb30a2…ea8ddb`](https://eth-sepolia.blockscout.com/tx/0xe2eb30a2a6ab53c9af0fb3956daf5587371bc0f82c63d2e4a267bf34e5ea8ddb) | 370099 |
+
+- Run #0, cabinet 0 "Axolotl Clash" (DUEL, 48% at 1.8x): d100 roll 16 is below the win threshold 48, so WIN; payout 18 VLAD on a 10 VLAD stake and a Trophy minted; hash block 11876182.
+- Run #1, cabinet 4 "Land Rush" (RACE, 3.6x, lane 2): the winning lane 2 equals the chosen lane 2, so WIN; payout 36 VLAD on a 10 VLAD stake and a Trophy minted; hash block 11876188.
+- Prize pool 1000 -> 966 VLAD (+20 entry fees, -54 payouts). Deployer `stats`: 2 runs, 2 wins, 20 VLAD wagered, 54 VLAD paid out.
+
 ## Part of the Stellar suite
 
 | Repo | Site |
