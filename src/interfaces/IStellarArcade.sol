@@ -12,7 +12,7 @@ interface IStellarArcade {
         RACING
     }
 
-    /// @dev DUEL: seed % 100 < winChancePct. TIERS: seed % 1000 < 20 jackpot 5x, < 200 win, < 450 refund.
+    /// @dev DUEL: seed % 100 < winChancePct. TIERS: seed % 1000 < 30 jackpot 5x, < 330 win, < 630 refund.
     ///      RACE: seed % 4 == chosen lane. HIGHCARD: rank of seed % 52 vs (seed >> 64) % 52, tie refunds.
     ///      EXTRACT: like DUEL (the plan's default is 35% at 2.6x).
     enum Kind {

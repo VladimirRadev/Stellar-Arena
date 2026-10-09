@@ -116,15 +116,23 @@ not for real value (that would need a verifiable random function such as Chainli
 ### The five kinds and their payouts
 
 Every cabinet belongs to one kind. The payout is a multiple of the stake (10 VLAD on every cabinet). "Return" is the
-expected payout per VLAD staked without items; 1 minus the return is the house edge.
+expected payout per VLAD staked without items; the house edge is 1 minus the return.
 
-| Kind | Rule (from `seed`) | Outcomes and probabilities | Payout | Return |
-|---|---|---|---|---|
-| DUEL | win if `seed % 100 < 48` | WIN 48%, LOSE 52% | WIN 1.8x (18 VLAD) | 0.864 |
-| TIERS | `r = seed % 1000` | JACKPOT `r < 20` (2%), WIN `r < 200` (18%), REFUND `r < 450` (25%), LOSE 55% | JACKPOT 5x, WIN 1.5x, REFUND 1x | 0.620 |
-| RACE | winning lane `= seed % 4`, you picked `choice` (must be 0 to 3, else `BadChoice`) | WIN 25%, LOSE 75% | WIN 3.6x (36 VLAD) | 0.900 |
-| HIGHCARD | your card `seed % 52`, house card `(seed >> 64) % 52`, rank `= card % 13` (0 = two, 12 = ace) | higher rank WIN ≈ 46.15% (6/13), same rank REFUND ≈ 7.69% (1/13), lower LOSE ≈ 46.15% | WIN 1.9x, REFUND 1x | ≈ 0.954 |
-| EXTRACT | win if `seed % 100 < 35` | WIN 35%, LOSE 65% | WIN 2.6x (26 VLAD) | 0.910 |
+| Kind | Rule (from `seed`) | Outcomes and probabilities | Payout | Return | House edge |
+|---|---|---|---|---|---|
+| DUEL | win if `seed % 100 < 48` | WIN 48%, LOSE 52% | WIN 1.8x (18 VLAD) | 0.864 | 13.6% |
+| TIERS | `r = seed % 1000` | JACKPOT `r < 30` (3%), WIN `r < 330` (30%), REFUND `r < 630` (30%), LOSE 37% | JACKPOT 5x, WIN 1.5x, REFUND 1x | 0.900 | 10% |
+| RACE | winning lane `= seed % 4`, you picked `choice` (must be 0 to 3, else `BadChoice`) | WIN 25%, LOSE 75% | WIN 3.6x (36 VLAD) | 0.900 | 10% |
+| HIGHCARD | your card `seed % 52`, house card `(seed >> 64) % 52`, rank `= card % 13` (0 = two, 12 = ace) | higher rank WIN ≈ 46.15% (6/13), same rank REFUND ≈ 7.69% (1/13), lower LOSE ≈ 46.15% | WIN 1.9x, REFUND 1x | ≈ 0.954 | ≈ 4.6% |
+| EXTRACT | win if `seed % 100 < 35` | WIN 35%, LOSE 65% | WIN 2.6x (26 VLAD) | 0.910 | 9% |
+
+TIERS return: 0.03 × 5 + 0.30 × 1.5 + 0.30 × 1 = 0.15 + 0.45 + 0.30 = 0.90 per VLAD staked.
+
+**Difference from the original plan.** The plan set the TIERS bands at `r < 20` jackpot (2%), `r < 200` win (18%) and
+`r < 450` refund (25%). That returns only 0.10 + 0.27 + 0.25 = 0.62 per VLAD staked, a 38% house edge, far above the
+other kinds. The contract uses the rebalanced bands above (`TIERS_JACKPOT_BELOW = 30`, `TIERS_WIN_BELOW = 330`,
+`TIERS_REFUND_BELOW = 630`), which bring TIERS to a 0.90 return and a 10% house edge, in line with RACE and EXTRACT.
+The multipliers (5x, 1.5x, 1x) are unchanged.
 
 Each cabinet stores its own `winChancePct` (DUEL and EXTRACT only) and `winBps` (the WIN multiplier in basis points),
 so the table shows the values the deploy script registers. The TIERS jackpot is fixed at 5x (`JACKPOT_BPS = 50_000`)

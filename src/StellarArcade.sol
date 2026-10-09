@@ -13,8 +13,8 @@ import {IStellarArcade} from "./interfaces/IStellarArcade.sol";
 ///         commit = keccak256(abi.encode(secret, you)); the item is burned and the cabinet's entry fee is escrowed.
 ///         3) From block enterBlock + 2 through enterBlock + 251, `resolve` with the secret.
 ///         Seed = keccak256(abi.encode(secret, blockhash(enterBlock + 1))); `rollsFor` maps it to a result per kind:
-///         DUEL/EXTRACT win when seed % 100 < winChancePct (+10 with a Sword); TIERS rolls seed % 1000 (< 20 jackpot
-///         5x, < 200 win, < 450 refund); RACE wins when seed % 4 equals the chosen lane; HIGHCARD compares the ranks
+///         DUEL/EXTRACT win when seed % 100 < winChancePct (+10 with a Sword); TIERS rolls seed % 1000 (< 30 jackpot
+///         5x, < 330 win, < 630 refund); RACE wins when seed % 4 equals the chosen lane; HIGHCARD compares the ranks
 ///         of seed % 52 and (seed >> 64) % 52 (a tie refunds). A Shield returns half the stake on a loss.
 contract StellarArcade is IStellarArcade, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -26,6 +26,11 @@ contract StellarArcade is IStellarArcade, Ownable, ReentrancyGuard {
     uint16 public constant SWORD_BONUS = 10; // win-chance points on DUEL and EXTRACT
     uint256 public constant SHIELD_REFUND_BPS = 5000;
     uint256 public constant JACKPOT_BPS = 50_000; // TIERS jackpot pays 5x
+    // TIERS bands on seed % 1000: jackpot 3%, win 30%, refund 30%, lose 37%. Expected return at the 1.5x win tier:
+    // 0.03 x 5 + 0.30 x 1.5 + 0.30 x 1 = 0.90 per VLAD staked (10% house edge).
+    uint16 public constant TIERS_JACKPOT_BELOW = 30;
+    uint16 public constant TIERS_WIN_BELOW = 330;
+    uint16 public constant TIERS_REFUND_BELOW = 630;
     uint256 public constant MAX_WIN_BPS = 50_000;
     uint8 public constant LANES = 4;
     uint256 public constant REVEAL_WINDOW = 250; // blocks, counted from enterBlock + 1 (the hash block)
@@ -227,9 +232,9 @@ contract StellarArcade is IStellarArcade, Ownable, ReentrancyGuard {
             if (roll < houseRoll) outcome = Outcome.WIN;
         } else if (kind == Kind.TIERS) {
             roll = uint16(seed % 1000);
-            if (roll < 20) outcome = Outcome.JACKPOT;
-            else if (roll < 200) outcome = Outcome.WIN;
-            else if (roll < 450) outcome = Outcome.REFUND;
+            if (roll < TIERS_JACKPOT_BELOW) outcome = Outcome.JACKPOT;
+            else if (roll < TIERS_WIN_BELOW) outcome = Outcome.WIN;
+            else if (roll < TIERS_REFUND_BELOW) outcome = Outcome.REFUND;
         } else if (kind == Kind.RACE) {
             (roll, houseRoll) = (uint16(seed % LANES), choice);
             if (roll == choice) outcome = Outcome.WIN;

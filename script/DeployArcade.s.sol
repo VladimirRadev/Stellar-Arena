@@ -87,7 +87,7 @@ contract DeployArcade is Script {
         list[28] = _cabinet("Dragon Hatch", STRATEGY, TIERS); // Eternal Dragons
     }
 
-    /// @dev Rules per kind from the plan: DUEL 48% -> 1.8x; TIERS 1.5x tier (jackpot 5x fixed in the contract);
+    /// @dev Rules per kind: DUEL 48% -> 1.8x; TIERS 1.5x tier (bands and the 5x jackpot are fixed in the contract);
     ///      RACE 3.6x; HIGHCARD 1.9x; EXTRACT 35% -> 2.6x.
     function _cabinet(string memory name, IStellarArcade.Genre genre, IStellarArcade.Kind kind)
         internal

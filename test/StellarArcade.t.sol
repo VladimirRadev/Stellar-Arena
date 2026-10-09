@@ -59,7 +59,7 @@ contract StellarArcadeTest is Test {
         return IStellarArcade.Game(name, genre, kind, chance, FEE_128, bps, true);
     }
 
-    /// The plan's rules for each kind: DUEL 48% 1.8x, TIERS 1.5x tier, RACE 3.6x, HIGHCARD 1.9x, EXTRACT 35% 2.6x.
+    /// The rules for each kind: DUEL 48% 1.8x, TIERS 1.5x tier, RACE 3.6x, HIGHCARD 1.9x, EXTRACT 35% 2.6x.
     function _fiveGames() internal pure returns (IStellarArcade.Game[] memory list) {
         list = new IStellarArcade.Game[](5);
         list[0] = _game("Axolotl Clash", IStellarArcade.Genre.RPG, IStellarArcade.Kind.DUEL, 48, 18_000);
@@ -96,7 +96,8 @@ contract StellarArcadeTest is Test {
         revert("no secret found");
     }
 
-    // Seed predicates, written from the plan's formulas (not from the contract).
+    // Seed predicates, written from the documented formulas (not from the contract). TIERS uses the rebalanced
+    // bands: jackpot r < 30, win r < 330, refund r < 630 (the plan had 20 / 200 / 450).
     function _duelWin(uint256 s) internal pure returns (bool) {
         return s % 100 < 48;
     }
@@ -110,19 +111,19 @@ contract StellarArcadeTest is Test {
     }
 
     function _jackpot(uint256 s) internal pure returns (bool) {
-        return s % 1000 < 20;
+        return s % 1000 < 30;
     }
 
     function _tierWin(uint256 s) internal pure returns (bool) {
-        return s % 1000 >= 20 && s % 1000 < 200;
+        return s % 1000 >= 30 && s % 1000 < 330;
     }
 
     function _tierRefund(uint256 s) internal pure returns (bool) {
-        return s % 1000 >= 200 && s % 1000 < 450;
+        return s % 1000 >= 330 && s % 1000 < 630;
     }
 
     function _tierLoss(uint256 s) internal pure returns (bool) {
-        return s % 1000 >= 450;
+        return s % 1000 >= 630;
     }
 
     function _cardWin(uint256 s) internal pure returns (bool) {
@@ -535,8 +536,8 @@ contract StellarArcadeTest is Test {
         assertEq(got[3], want[3], "paidOut");
     }
 
-    /// `rollsFor` agrees with an independent implementation of the plan's formulas on 300 seeds per kind.
-    function test_RollsFor_MatchesThePlanFormulas() public view {
+    /// `rollsFor` agrees with an independent implementation of the documented formulas on 300 seeds per kind.
+    function test_RollsFor_MatchesTheDocumentedFormulas() public view {
         for (uint256 i; i < 300; ++i) {
             bytes32 secret = keccak256(abi.encode("verify", i));
             uint256 s = _seed(secret);
@@ -553,7 +554,7 @@ contract StellarArcadeTest is Test {
             _check(DUEL_ID, secret, item, 0, s % 100 < 48 + bonus ? 18_000 : shieldBps);
             _check(EXTRACT_ID, secret, item, 0, s % 100 < 35 + bonus ? 26_000 : shieldBps);
             uint256 r = s % 1000;
-            _check(TIERS_ID, secret, otherItem, 0, r < 20 ? 50_000 : r < 200 ? 15_000 : r < 450 ? 10_000 : loseBps);
+            _check(TIERS_ID, secret, otherItem, 0, r < 30 ? 50_000 : r < 330 ? 15_000 : r < 630 ? 10_000 : loseBps);
             _check(RACE_ID, secret, otherItem, lane, s % 4 == lane ? 36_000 : loseBps);
             (uint256 mine, uint256 house) = ((s % 52) % 13, ((s >> 64) % 52) % 13);
             _check(HIGHCARD_ID, secret, otherItem, 0, mine > house ? 19_000 : mine == house ? 10_000 : loseBps);
