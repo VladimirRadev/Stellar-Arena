@@ -318,6 +318,19 @@ The script sends five transactions, in this order:
 4. `vlad.approve(arena, 1000 VLAD)`;
 5. `arena.fundPool(1000 VLAD)`, the initial prize pool.
 
+## Smoke tests (2026-10-09)
+
+End-to-end run on Ethereum Sepolia on 2026-10-09 from the deployer `0xEb0243ea72CB24eFb7128Ee7aca314C080b600c4` (an EIP-7702 delegated EOA), with `smoke.sh` (19 steps across the whole suite, one transaction at a time, each waiting for its receipt). After every transaction the script compared balances, reserves and events at the transaction's block with the block before it; "ok" means every such assertion passed. Step numbers are the suite-wide order. Rows for this repo (step 16 is the VLAD approval for the arena; the Sword bought in step 15 is burned on entry):
+
+| Step | Function | Result | Tx (Blockscout) | Gas used |
+|---|---|---|---|---|
+| 16 | `vlad.approve(arena, 10e18)` | ok | [`0xb4be368c…a909ba`](https://eth-sepolia.blockscout.com/tx/0xb4be368ca67c7d62b7d36cb13c1ffb917d5a0b4e9d49d198fd537212bea909ba) | 128316 |
+| 17 | `arena.enter(commit, 1)` | ok | [`0x9f7050bd…f4f350`](https://eth-sepolia.blockscout.com/tx/0x9f7050bdaa053462a97b2937937c7124cb2c998cd3fdb713f0e8123a99f4f350) | 843529 |
+| 18 | `arena.resolve(runId, secret)` | ok | [`0xc86df9cc…00a43f`](https://eth-sepolia.blockscout.com/tx/0xc86df9cc5366f62b99e33e6260a2843f410cd34ed82a25bbd84c42f7e300a43f) | 652036 |
+
+- Step 17 arena enter: run #0 entered in block 11876073 with a Sword, stake 10 VLAD
+- Step 18 arena resolve: run #0: playerRoll 62 (d100 + 10 Sword bonus) vs enemyRoll 40 -> WON; payout 18 VLAD; hash block 11876074
+
 ## Part of the Stellar suite
 
 | Repo | Site |
