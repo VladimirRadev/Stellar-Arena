@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { StarGlyph } from '../shell/icons'
 import { Tabs } from '../shell/Tabs'
+import { ArcadeTab } from './arcade/ArcadeTab'
 import { DEPLOYED } from './arena'
 import './arena.css'
 import { FoxEmblem } from './art'
 import { HistoryTab } from './HistoryTab'
 import { PlayTab } from './PlayTab'
 
-type TabKey = 'play' | 'history'
+type TabKey = 'play' | 'arcade' | 'history'
 const TABS = [
   { key: 'play', label: 'Play' },
+  { key: 'arcade', label: 'Arcade' },
   { key: 'history', label: 'History' },
 ] as const satisfies readonly { key: TabKey; label: string }[]
 
@@ -35,11 +37,20 @@ export function ArenaApp() {
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Tabs tabs={TABS} value={tab} onChange={setTab} label="Arena sections" />
-          <p className="text-sm text-muted">
-            {tab === 'play' ? 'Equip, enter, wait one block, reveal.' : 'Every run, every roll, all on-chain.'}
-          </p>
+          {tab === 'play' ? (
+            <p className="text-sm text-muted">
+              Equip, enter, wait one block, reveal.{' '}
+              <button type="button" className="link font-medium" onClick={() => setTab('arcade')}>
+                29 more cabinets in the Arcade →
+              </button>
+            </p>
+          ) : (
+            <p className="text-sm text-muted">
+              {tab === 'arcade' ? '29 cabinets, five kinds of rules, one prize pool.' : 'Every run, every roll, all on-chain.'}
+            </p>
+          )}
         </div>
-        {tab === 'play' ? <PlayTab onShowFairness={showFairness} /> : <HistoryTab />}
+        {tab === 'play' ? <PlayTab onShowFairness={showFairness} /> : tab === 'arcade' ? <ArcadeTab /> : <HistoryTab />}
       </div>
     </div>
   )

@@ -66,8 +66,18 @@ const pulse = (t: number, start: number, dur: number) =>
 const decay = (t: number, start: number, dur: number) => (t < start || t > start + dur ? 0 : 1 - (t - start) / dur)
 
 const CONFETTI_COLORS = ['#a3e635', '#34d399', '#10b981', '#ecfccb', '#fbbf24']
+const DEFAULT_LABELS = ['YOU', 'SHADOW'] as const
 
-export function CombatStage({ result, onFinished }: { result: FightResult | null; onFinished?: () => void }) {
+export function CombatStage({
+  result,
+  onFinished,
+  labels = DEFAULT_LABELS,
+}: {
+  result: FightResult | null
+  onFinished?: () => void
+  /** Captions above the two counters (the Arcade's DUEL shows its roll and the win threshold). */
+  labels?: readonly [string, string]
+}) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const finishedRef = useRef(onFinished)
@@ -108,7 +118,7 @@ export function CombatStage({ result, onFinished }: { result: FightResult | null
       const t = reduced ? (result ? FIGHT_MS : 0) : now - start
       const dt = Math.min(50, now - last)
       last = now
-      const scene = drawScene(ctx, width, height, t, result)
+      const scene = drawScene(ctx, width, height, t, result, labels)
 
       if (result && !reduced) {
         for (const hit of scene.hits) {
@@ -150,7 +160,7 @@ export function CombatStage({ result, onFinished }: { result: FightResult | null
       cancelAnimationFrame(raf)
       observer.disconnect()
     }
-  }, [result])
+  }, [result, labels])
 
   const label = result
     ? `Fight result: your roll ${result.playerRoll} against the shadow's ${result.enemyRoll}. You ${result.won ? 'won' : 'lost'}.`
@@ -165,7 +175,14 @@ export function CombatStage({ result, onFinished }: { result: FightResult | null
 
 type Hit = { at: number; x: number; y: number; color: string }
 
-function drawScene(ctx: CanvasRenderingContext2D, w: number, h: number, t: number, result: FightResult | null) {
+function drawScene(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  t: number,
+  result: FightResult | null,
+  labels: readonly [string, string],
+) {
   ctx.clearRect(0, 0, w, h)
   const ground = h * 0.8
 
@@ -280,10 +297,11 @@ function drawScene(ctx: CanvasRenderingContext2D, w: number, h: number, t: numbe
   // Roll counters above the fighters.
   const top = ground - 96 * scale - 10
   const size = Math.round(Math.max(20, Math.min(34, h * 0.13)))
-  const count = (final: number) => (t < 300 ? 1 : Math.max(1, Math.round(easeOut((t - 300) / 2000) * final)))
+  const count = (final: number) =>
+    final <= 1 ? final : t < 300 ? 1 : Math.max(1, Math.round(easeOut((t - 300) / 2000) * final))
   const settled = result !== null && t >= 2300
-  drawRoll(ctx, w * 0.27, top, size, 'YOU', result ? String(count(result.playerRoll)) : '??', '#a3e635', settled && result.won)
-  drawRoll(ctx, w * 0.73, top, size, 'SHADOW', result ? String(count(result.enemyRoll)) : '??', '#fca5a5', settled && !result.won)
+  drawRoll(ctx, w * 0.27, top, size, labels[0], result ? String(count(result.playerRoll)) : '??', '#a3e635', settled && result.won)
+  drawRoll(ctx, w * 0.73, top, size, labels[1], result ? String(count(result.enemyRoll)) : '??', '#fca5a5', settled && !result.won)
 
   if (!result || t < 700) {
     ctx.save()
