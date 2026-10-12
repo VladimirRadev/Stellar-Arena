@@ -115,6 +115,7 @@ export function ActiveRunPanel({
             disabled={!ready}
             errorMessages={ARCADE_ERRORS}
             onConfirmed={handleConfirmed}
+            successMessage={`Run #${run.id} on ${CABINETS[run.gameId]?.name ?? `cabinet ${run.gameId}`} resolved. The outcome and payout are shown in the cabinet card above.`}
             className="h-13 w-full text-base"
           >
             {ready ? 'Resolve: reveal and play' : `Sealing… ready at block ${first.toString()}`}
@@ -232,6 +233,7 @@ function OpenRunRow({
             disabled={!ready}
             errorMessages={ARCADE_ERRORS}
             onConfirmed={handleConfirmed}
+            successMessage={`Run #${id} on ${cabinet?.name ?? `cabinet ${run.gameId}`} resolved. The outcome and payout are shown in its cabinet card.`}
             className="w-full"
           >
             {ready ? 'Resolve' : 'Sealing…'}

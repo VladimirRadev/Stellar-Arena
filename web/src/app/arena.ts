@@ -2,7 +2,9 @@ import { encodeAbiParameters, keccak256, toHex, type Abi, type Address, type Has
 import { iStellarStoreAbi, iVladTokenAbi, stellarArenaAbi } from '../abi'
 import { CHAIN_ID, addresses } from '../config/addresses'
 import type { ErrorMessages } from '../shell/errors'
-import { formatToken, isConfiguredAddress } from '../shell/format'
+import type { QueryClient } from '@tanstack/react-query'
+import { explorerTxUrl, formatToken, isConfiguredAddress, truncateAddress } from '../shell/format'
+import { toast } from '../shell/Toast'
 
 /** All three contracts must be real deployments before the page reads anything. */
 export const DEPLOYED =
@@ -24,6 +26,8 @@ export const REVEAL_WINDOW = 250n
 export const BLOCK_SECONDS = 12
 
 export const ITEM_NAMES = ['None', 'Sword', 'Shield'] as const
+/** Full Store names of the items, for success messages (index = item id; NO_ITEM has none). */
+export const STORE_ITEM_NAMES = ['', 'Guardian Sword', 'Guardian Shield'] as const
 
 /** `resolve` is accepted from this block (the hash of enterBlock + 1 must be readable)... */
 export const firstResolveBlock = (enterBlock: bigint) => enterBlock + 2n
@@ -140,4 +144,23 @@ export function formatMultiplier(winBps: bigint | number | undefined): string {
 export function blocksToMinutes(blocks: bigint): string {
   const minutes = Math.max(0, Math.round((Number(blocks) * BLOCK_SECONDS) / 60))
   return minutes < 1 ? '<1 min' : `~${minutes} min`
+}
+
+/**
+ * Success handling for the two custom `enter` flows (Arena and Arcade). They cannot be a TxButton: the
+ * secret is saved before the wallet opens and the run id comes from the Entered event. So they do what
+ * TxButton does after a successful receipt: show the same "Transaction confirmed" toast with `body`, then
+ * refetch every cached read now and again 3 s and 8 s later, because the next read can hit an RPC node
+ * that has not seen the new block yet and would return the old balance.
+ */
+export function confirmEnter(queryClient: QueryClient, hash: Hash, body: string) {
+  toast({
+    kind: 'success',
+    title: 'Transaction confirmed',
+    body,
+    href: explorerTxUrl(hash),
+    hrefLabel: 'View on Blockscout',
+    detail: truncateAddress(hash, 10, 8),
+  })
+  for (const ms of [0, 3_000, 8_000]) setTimeout(() => void queryClient.invalidateQueries(), ms)
 }

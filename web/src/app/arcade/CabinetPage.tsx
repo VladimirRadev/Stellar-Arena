@@ -1,17 +1,17 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useState } from 'react'
 import { parseEventLogs, type Abi } from 'viem'
-import { useConnection, usePublicClient, useReadContract, useReadContracts, useWriteContract } from 'wagmi'
+import { useConnection, usePublicClient, useReadContracts, useWriteContract } from 'wagmi'
 import { stellarArcadeAbi } from '../../abi'
 import { CHAIN_ID, addresses } from '../../config/addresses'
+import { ApproveThen } from '../../shell/ApproveThen'
 import { COMMON_ERRORS_ABI, describeError } from '../../shell/errors'
 import { explorerTxUrl, formatToken } from '../../shell/format'
-import { ArrowIcon, CheckIcon, ExternalIcon, Spinner } from '../../shell/icons'
+import { ArrowIcon, ExternalIcon, Spinner } from '../../shell/icons'
 import { NetworkGate } from '../../shell/NetworkGate'
 import { getSite } from '../../shell/sites'
-import { TxButton } from '../../shell/TxButton'
 import { useVladBalance } from '../../shell/useVladBalance'
-import { commitmentOf, newSecret, storeContract, tokenContract } from '../arena'
+import { STORE_ITEM_NAMES, commitmentOf, confirmEnter, firstResolveBlock, newSecret, storeContract } from '../arena'
 import { FistIcon, ShieldIcon, SwordIcon, TrophyIcon } from '../art'
 import {
   ARCADE_DEPLOYED,
@@ -43,8 +43,6 @@ import { ArcadeStage } from './ArcadeStage'
 import { ActiveRunPanel, ArcadeOpenRuns, type ActiveArcadeRun } from './ArcadeRuns'
 import { sameAddress } from './hooks'
 import { CabinetIcon } from './CabinetIcon'
-
-const APPROVE_RUNS = 10n
 
 export function CabinetPage({
   cabinet,
@@ -308,14 +306,6 @@ function EnterSteps({
     (item === SWORD && (!swordAllowed(rules.kind) || swords === 0n)) || (item === SHIELD && shields === 0n) ? NO_ITEM : item
   const choice = rules.kind === KIND.RACE ? lane : 0
   const fee = rules.entryFee
-  const allowanceQ = useReadContract({
-    ...tokenContract,
-    functionName: 'allowance',
-    args: address ? [address, addresses.arcade] : undefined,
-    query: { enabled: ARCADE_DEPLOYED && !!address },
-  })
-  const allowance = allowanceQ.data
-  const needsApproval = allowance !== undefined && allowance < fee
   const tooPoor = balance !== undefined && balance < fee
 
   async function enter() {
@@ -371,13 +361,19 @@ function EnterSteps({
         arcadeSecrets.forgetSecret(address, nextId)
       }
       arcadeSecrets.clearPending(address)
-      void queryClient.invalidateQueries()
+      const enterBlock = entered?.args.enterBlock ?? receipt.blockNumber
+      const extras = `${usableItem !== NO_ITEM ? ` and a ${STORE_ITEM_NAMES[usableItem]}` : ''}${rules.kind === KIND.RACE ? ` on lane ${choice + 1}` : ''}`
+      confirmEnter(
+        queryClient,
+        sent,
+        `Entered ${cabinet.name} with ${formatToken(fee)} VLAD${extras} as run #${id}. Resolve it from block ${firstResolveBlock(enterBlock)}.`,
+      )
       onEntered({
         id,
         gameId: cabinet.id,
         kind: rules.kind,
         secret,
-        enterBlock: entered?.args.enterBlock ?? receipt.blockNumber,
+        enterBlock,
         item: usableItem,
         choice,
         winChancePct: rules.winChancePct,
@@ -405,38 +401,25 @@ function EnterSteps({
 
   return (
     <div className="space-y-3">
-      <Step n={1} done={!needsApproval && allowance !== undefined} title="Approve VLAD for the Arcade">
-        {needsApproval ? (
-          <TxButton
-            request={{ address: addresses.vladToken, abi: tokenContract.abi, functionName: 'approve', args: [addresses.arcade, fee * APPROVE_RUNS] }}
-            errorMessages={ARCADE_ERRORS}
-            className="w-full sm:w-auto"
-          >
-            Approve {formatToken(fee * APPROVE_RUNS)} VLAD ({APPROVE_RUNS.toString()} runs)
-          </TxButton>
-        ) : (
-          <p className="text-sm text-muted">
-            {!ARCADE_DEPLOYED
-              ? 'Available once the Arcade is deployed.'
-              : allowance === undefined
-                ? 'The Arcade needs an allowance to take the entry fee.'
-                : `Allowance covers ${(allowance / fee).toString()} run(s).`}
-          </p>
-        )}
-      </Step>
-      <Step n={2} done={false} title={rules.kind === KIND.RACE ? `Enter on lane ${lane + 1}` : 'Enter the cabinet'}>
+      {tooPoor ? <p className="text-sm text-warning">You need at least {formatToken(fee)} VLAD to enter.</p> : null}
+      <ApproveThen
+        spender={addresses.arcade}
+        spenderName="the Arcade"
+        amount={fee}
+        stepLabels={['Approve VLAD', rules.kind === KIND.RACE ? `Enter on lane ${lane + 1}` : 'Enter the cabinet']}
+        disabled={tooPoor || !rules.active}
+      >
         <div className="flex flex-col gap-2">
           <button
             type="button"
             className="btn btn-primary h-13 w-full text-base"
-            disabled={!ARCADE_DEPLOYED || !rules.active || busy || needsApproval || tooPoor}
+            disabled={!ARCADE_DEPLOYED || !rules.active || busy || tooPoor}
             aria-busy={busy}
             onClick={enter}
           >
             {busy ? <Spinner /> : null}
             {label}
           </button>
-          {tooPoor ? <p className="text-sm text-warning">You need at least {formatToken(fee)} VLAD to enter.</p> : null}
           {hash ? (
             <a className="link inline-flex items-center gap-1 text-sm" href={explorerTxUrl(hash)} target="_blank" rel="noreferrer">
               View the enter transaction on Blockscout <ExternalIcon />
@@ -452,25 +435,7 @@ function EnterSteps({
             Resolve. The secret is saved in this browser before the transaction is sent.
           </p>
         </div>
-      </Step>
-    </div>
-  )
-}
-
-function Step({ n, done, title, children }: { n: number; done: boolean; title: string; children: ReactNode }) {
-  return (
-    <div className="flex gap-3">
-      <span
-        className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg border font-mono text-xs font-semibold ${
-          done ? 'border-accent-2/60 bg-accent/15 text-accent-2' : 'border-border bg-surface-2/70 text-muted'
-        }`}
-      >
-        {done ? <CheckIcon size={14} /> : n}
-      </span>
-      <div className="min-w-0 flex-1 space-y-2">
-        <p className="font-display font-semibold">{title}</p>
-        {children}
-      </div>
+      </ApproveThen>
     </div>
   )
 }

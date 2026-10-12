@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { parseEventLogs, type Abi, type Address, type Hash, type Hex } from 'viem'
 import {
   useBlockNumber,
@@ -11,10 +11,11 @@ import {
 } from 'wagmi'
 import { stellarArenaAbi } from '../abi'
 import { CHAIN_ID, addresses } from '../config/addresses'
+import { ApproveThen } from '../shell/ApproveThen'
 import { CopyButton } from '../shell/CopyButton'
 import { COMMON_ERRORS_ABI, describeError } from '../shell/errors'
 import { explorerTxUrl, formatToken } from '../shell/format'
-import { ArrowIcon, CheckIcon, ExternalIcon, Spinner } from '../shell/icons'
+import { ArrowIcon, ExternalIcon, Spinner } from '../shell/icons'
 import { NetworkGate } from '../shell/NetworkGate'
 import { getSite } from '../shell/sites'
 import { StatTile } from '../shell/StatTile'
@@ -26,12 +27,14 @@ import {
   ITEM_NAMES,
   NO_ITEM,
   SHIELD,
+  STORE_ITEM_NAMES,
   SWORD,
   arenaContract,
   arenaWriteAbi,
   blocksToMinutes,
   commitmentOf,
   computeRolls,
+  confirmEnter,
   firstResolveBlock,
   formatMultiplier,
   isBytes32,
@@ -39,7 +42,6 @@ import {
   newSecret,
   nominalPayout,
   storeContract,
-  tokenContract,
   type FightResult,
   type Run,
 } from './arena'
@@ -58,7 +60,6 @@ import {
 /** A run entered from this page that is waiting to be resolved. */
 type ActiveRun = { id: bigint; secret: Hex; enterBlock: bigint; item: number; txHash?: Hash }
 
-const APPROVE_RUNS = 10n
 const sameAddress = (a: string | undefined, b: string | undefined) => !!a && !!b && a.toLowerCase() === b.toLowerCase()
 
 export function PlayTab({ onShowFairness }: { onShowFairness: () => void }) {
@@ -300,14 +301,6 @@ function EnterSteps({
   const [hash, setHash] = useState<Hash>()
   const [error, setError] = useState<string>()
 
-  const allowanceQ = useReadContract({
-    ...tokenContract,
-    functionName: 'allowance',
-    args: address ? [address, addresses.arena] : undefined,
-    query: { enabled: DEPLOYED && !!address },
-  })
-  const allowance = allowanceQ.data
-  const needsApproval = entryFee !== undefined && allowance !== undefined && allowance < entryFee
   const tooPoor = entryFee !== undefined && balance !== undefined && balance < entryFee
 
   async function enter() {
@@ -371,8 +364,13 @@ function EnterSteps({
         forgetSecret(address, nextId)
       }
       clearPending(address)
-      void queryClient.invalidateQueries()
-      onEntered({ id, secret, enterBlock: entered?.args.enterBlock ?? receipt.blockNumber, item, txHash: sent })
+      const enterBlock = entered?.args.enterBlock ?? receipt.blockNumber
+      confirmEnter(
+        queryClient,
+        sent,
+        `Entered run #${id} with ${formatToken(entryFee)} VLAD${item !== NO_ITEM ? ` and a ${STORE_ITEM_NAMES[item]}` : ''}. Resolve it from block ${firstResolveBlock(enterBlock)}.`,
+      )
+      onEntered({ id, secret, enterBlock, item, txHash: sent })
     } catch (e) {
       // Nothing reached the chain: drop the secret saved for this attempt.
       if (!sent && expectedId !== undefined) {
@@ -396,42 +394,25 @@ function EnterSteps({
 
   return (
     <div className="space-y-3">
-      <Step n={1} done={!needsApproval && allowance !== undefined} title="Approve VLAD">
-        {needsApproval && entryFee !== undefined ? (
-          <TxButton
-            request={{
-              address: addresses.vladToken,
-              abi: tokenContract.abi,
-              functionName: 'approve',
-              args: [addresses.arena, entryFee * APPROVE_RUNS],
-            }}
-            errorMessages={ARENA_ERRORS}
-            className="w-full sm:w-auto"
-          >
-            Approve {formatToken(entryFee * APPROVE_RUNS)} VLAD ({APPROVE_RUNS.toString()} runs)
-          </TxButton>
-        ) : (
-          <p className="text-sm text-muted">
-            {allowance === undefined
-              ? 'The arena needs an allowance to take the entry fee.'
-              : `Allowance covers ${entryFee ? (allowance / entryFee).toString() : '—'} run(s).`}
-          </p>
-        )}
-      </Step>
-
-      <Step n={2} done={false} title={`Enter with ${ITEM_NAMES[item] === 'None' ? 'no item' : `a ${ITEM_NAMES[item]}`}`}>
+      {tooPoor ? <p className="text-sm text-warning">You need at least {formatToken(entryFee)} VLAD to enter.</p> : null}
+      <ApproveThen
+        spender={addresses.arena}
+        spenderName="the Arena"
+        amount={entryFee ?? 0n}
+        stepLabels={['Approve VLAD', `Enter with ${ITEM_NAMES[item] === 'None' ? 'no item' : `a ${ITEM_NAMES[item]}`}`]}
+        disabled={tooPoor}
+      >
         <div className="flex flex-col gap-2">
           <button
             type="button"
             className="btn btn-primary h-13 w-full text-base"
-            disabled={!DEPLOYED || busy || needsApproval || tooPoor || entryFee === undefined}
+            disabled={!DEPLOYED || busy || tooPoor || entryFee === undefined}
             aria-busy={busy}
             onClick={enter}
           >
             {busy ? <Spinner /> : null}
             {label}
           </button>
-          {tooPoor ? <p className="text-sm text-warning">You need at least {formatToken(entryFee)} VLAD to enter.</p> : null}
           {hash ? (
             <a className="link inline-flex items-center gap-1 text-sm" href={explorerTxUrl(hash)} target="_blank" rel="noreferrer">
               View the enter transaction on Blockscout <ExternalIcon />
@@ -447,25 +428,7 @@ function EnterSteps({
             before the transaction is sent.
           </p>
         </div>
-      </Step>
-    </div>
-  )
-}
-
-function Step({ n, done, title, children }: { n: number; done: boolean; title: string; children: ReactNode }) {
-  return (
-    <div className="flex gap-3">
-      <span
-        className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg border font-mono text-xs font-semibold ${
-          done ? 'border-accent-2/60 bg-accent/15 text-accent-2' : 'border-border bg-surface-2/70 text-muted'
-        }`}
-      >
-        {done ? <CheckIcon size={14} /> : n}
-      </span>
-      <div className="min-w-0 flex-1 space-y-2">
-        <p className="font-display font-semibold">{title}</p>
-        {children}
-      </div>
+      </ApproveThen>
     </div>
   )
 }
@@ -494,7 +457,8 @@ function useResolveHandler(run: { id: bigint; item: number }, onResolved: (r: Fi
   return useCallback(
     async (hash: Hash) => {
       if (!publicClient) return
-      const receipt = await publicClient.getTransactionReceipt({ hash })
+      // waitFor…, not get…: the next request may hit an RPC node that has not seen this block yet.
+      const receipt = await publicClient.waitForTransactionReceipt({ hash })
       const event = parseEventLogs({ abi: stellarArenaAbi, eventName: 'Resolved', logs: receipt.logs }).find(
         (log) => log.args.id === run.id,
       )
@@ -607,6 +571,7 @@ function ResolvePanel({
         disabled={!ready}
         errorMessages={ARENA_ERRORS}
         onConfirmed={handleConfirmed}
+        successMessage={`Run #${run.id} resolved. The outcome and payout are shown in the arena card above.`}
         className="h-13 w-full text-base"
       >
         {ready ? 'Resolve: reveal and fight' : `Sealing… ready at block ${first.toString()}`}
@@ -767,6 +732,7 @@ function OpenRunRow({
             disabled={!ready}
             errorMessages={ARENA_ERRORS}
             onConfirmed={handleConfirmed}
+            successMessage={`Run #${id} resolved. The outcome and payout are shown in the arena card.`}
             className="w-full"
           >
             {ready ? 'Resolve' : 'Sealing…'}

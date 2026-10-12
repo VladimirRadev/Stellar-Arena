@@ -18,7 +18,8 @@ export function useArcadeResolveHandler(
   return useCallback(
     async (hash: Hash) => {
       if (!publicClient) return
-      const receipt = await publicClient.getTransactionReceipt({ hash })
+      // waitFor…, not get…: the next request may hit an RPC node that has not seen this block yet.
+      const receipt = await publicClient.waitForTransactionReceipt({ hash })
       const event = parseEventLogs({ abi: stellarArcadeAbi, eventName: 'Resolved', logs: receipt.logs }).find(
         (log) => log.args.id === run.id,
       )
