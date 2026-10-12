@@ -11,7 +11,8 @@ import { ArrowIcon, ExternalIcon, Spinner } from '../../shell/icons'
 import { NetworkGate } from '../../shell/NetworkGate'
 import { getSite } from '../../shell/sites'
 import { useVladBalance } from '../../shell/useVladBalance'
-import { STORE_ITEM_NAMES, commitmentOf, confirmEnter, firstResolveBlock, newSecret, storeContract } from '../arena'
+import { trackTx } from '../../shell/txTracker'
+import { STORE_ITEM_NAMES, commitmentOf, firstResolveBlock, newSecret, storeContract } from '../arena'
 import { FistIcon, ShieldIcon, SwordIcon, TrophyIcon } from '../art'
 import {
   ARCADE_DEPLOYED,
@@ -363,11 +364,13 @@ function EnterSteps({
       arcadeSecrets.clearPending(address)
       const enterBlock = entered?.args.enterBlock ?? receipt.blockNumber
       const extras = `${usableItem !== NO_ITEM ? ` and a ${STORE_ITEM_NAMES[usableItem]}` : ''}${rules.kind === KIND.RACE ? ` on lane ${choice + 1}` : ''}`
-      confirmEnter(
+      // The receipt is already here (the run id needs its logs); the tracker toasts and refreshes balances.
+      trackTx({
+        hash: sent,
+        publicClient,
         queryClient,
-        sent,
-        `Entered ${cabinet.name} with ${formatToken(fee)} VLAD${extras} as run #${id}. Resolve it from block ${firstResolveBlock(enterBlock)}.`,
-      )
+        successMessage: `Entered ${cabinet.name} with ${formatToken(fee)} VLAD${extras} as run #${id}. Resolve it from block ${firstResolveBlock(enterBlock)}.`,
+      })
       onEntered({
         id,
         gameId: cabinet.id,
@@ -406,6 +409,7 @@ function EnterSteps({
         spender={addresses.arcade}
         spenderName="the Arcade"
         amount={fee}
+        approveAmount={fee * 10n}
         stepLabels={['Approve VLAD', rules.kind === KIND.RACE ? `Enter on lane ${lane + 1}` : 'Enter the cabinet']}
         disabled={tooPoor || !rules.active}
       >

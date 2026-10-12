@@ -20,6 +20,7 @@ import { NetworkGate } from '../shell/NetworkGate'
 import { getSite } from '../shell/sites'
 import { StatTile } from '../shell/StatTile'
 import { TxButton } from '../shell/TxButton'
+import { trackTx } from '../shell/txTracker'
 import { useVladBalance } from '../shell/useVladBalance'
 import {
   ARENA_ERRORS,
@@ -34,7 +35,6 @@ import {
   blocksToMinutes,
   commitmentOf,
   computeRolls,
-  confirmEnter,
   firstResolveBlock,
   formatMultiplier,
   isBytes32,
@@ -365,11 +365,13 @@ function EnterSteps({
       }
       clearPending(address)
       const enterBlock = entered?.args.enterBlock ?? receipt.blockNumber
-      confirmEnter(
+      // The receipt is already here (the run id needs its logs); the tracker toasts and refreshes balances.
+      trackTx({
+        hash: sent,
+        publicClient,
         queryClient,
-        sent,
-        `Entered run #${id} with ${formatToken(entryFee)} VLAD${item !== NO_ITEM ? ` and a ${STORE_ITEM_NAMES[item]}` : ''}. Resolve it from block ${firstResolveBlock(enterBlock)}.`,
-      )
+        successMessage: `Entered run #${id} with ${formatToken(entryFee)} VLAD${item !== NO_ITEM ? ` and a ${STORE_ITEM_NAMES[item]}` : ''}. Resolve it from block ${firstResolveBlock(enterBlock)}.`,
+      })
       onEntered({ id, secret, enterBlock, item, txHash: sent })
     } catch (e) {
       // Nothing reached the chain: drop the secret saved for this attempt.
@@ -399,6 +401,7 @@ function EnterSteps({
         spender={addresses.arena}
         spenderName="the Arena"
         amount={entryFee ?? 0n}
+        approveAmount={(entryFee ?? 0n) * 10n}
         stepLabels={['Approve VLAD', `Enter with ${ITEM_NAMES[item] === 'None' ? 'no item' : `a ${ITEM_NAMES[item]}`}`]}
         disabled={tooPoor}
       >

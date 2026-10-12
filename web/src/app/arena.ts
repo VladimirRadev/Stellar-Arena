@@ -2,9 +2,7 @@ import { encodeAbiParameters, keccak256, toHex, type Abi, type Address, type Has
 import { iStellarStoreAbi, iVladTokenAbi, stellarArenaAbi } from '../abi'
 import { CHAIN_ID, addresses } from '../config/addresses'
 import type { ErrorMessages } from '../shell/errors'
-import type { QueryClient } from '@tanstack/react-query'
-import { explorerTxUrl, formatToken, isConfiguredAddress, truncateAddress } from '../shell/format'
-import { toast } from '../shell/Toast'
+import { formatToken, isConfiguredAddress } from '../shell/format'
 
 /** All three contracts must be real deployments before the page reads anything. */
 export const DEPLOYED =
@@ -146,21 +144,3 @@ export function blocksToMinutes(blocks: bigint): string {
   return minutes < 1 ? '<1 min' : `~${minutes} min`
 }
 
-/**
- * Success handling for the two custom `enter` flows (Arena and Arcade). They cannot be a TxButton: the
- * secret is saved before the wallet opens and the run id comes from the Entered event. So they do what
- * TxButton does after a successful receipt: show the same "Transaction confirmed" toast with `body`, then
- * refetch every cached read now and again 3 s and 8 s later, because the next read can hit an RPC node
- * that has not seen the new block yet and would return the old balance.
- */
-export function confirmEnter(queryClient: QueryClient, hash: Hash, body: string) {
-  toast({
-    kind: 'success',
-    title: 'Transaction confirmed',
-    body,
-    href: explorerTxUrl(hash),
-    hrefLabel: 'View on Blockscout',
-    detail: truncateAddress(hash, 10, 8),
-  })
-  for (const ms of [0, 3_000, 8_000]) setTimeout(() => void queryClient.invalidateQueries(), ms)
-}
