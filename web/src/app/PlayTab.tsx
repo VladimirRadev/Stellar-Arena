@@ -658,7 +658,13 @@ function ResultBanner({ result, onClose }: { result: FightResult; onClose: () =>
             <span className="text-muted">Your stake stays in the prize pool.</span>
           )}
         </p>
-      ) : null}
+      ) : (
+        <p className="mt-2 text-sm">
+          <a className="link inline-flex items-center gap-1" href={`${getSite('store').url}#forge`}>
+            Forge a Sword (2 trophies) or Shield (3) at the Store <ExternalIcon />
+          </a>
+        </p>
+      )}
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button type="button" className="btn btn-ghost" onClick={onClose}>
           {result.demo ? 'Close demo' : 'Play again'}
@@ -906,7 +912,7 @@ function RulesCard({
   const rules = [
     ['Stake', `${fee} VLAD per run, held by the contract until the run is resolved.`],
     ['Roll', 'You and the shadow each roll 1 to 100. The higher roll wins; a tie goes to the shadow.'],
-    ['Win', `${mult} the stake, paid from the prize pool, plus a Trophy (ERC-1155).`],
+    ['Win', `${mult} the stake, paid from the prize pool, plus a Trophy (ERC-1155). Trophies can be redeemed at the Store's Forge (Sword 2, Shield 3).`],
     ['Items', 'Sword adds 10 to your roll. Shield returns 50% of the stake on a loss. Items burn on entry.'],
     ['Reveal', 'Resolve from block enterBlock + 2 through enterBlock + 251 (about 50 minutes).'],
   ] as const

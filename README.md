@@ -72,6 +72,9 @@ roll formula. Take the secret from the `resolve` transaction input and the block
 
 One item per run. The item is burned at `enter`, whatever the outcome.
 
+Trophies stay in your wallet and are redeemable for Swords and Shields at the Store's
+[Forge](https://vladimirradev.github.io/Stellar-Store/#forge): a Guardian Sword costs 2 Trophies, a Guardian Shield costs 3.
+
 ## Prize pool economics
 
 - A win pays `stake × winBps / 10_000`. With the defaults (`entryFee = 10 VLAD`, `winBps = 18_000`) a win pays

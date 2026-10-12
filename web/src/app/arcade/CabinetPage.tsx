@@ -531,7 +531,7 @@ function EquipmentCard({ kind }: { kind: number }) {
   const rows = [
     { Icon: SwordIcon, name: 'Sword', text: swordAllowed(kind) ? '+10 points of win chance on this cabinet.' : 'Not accepted on this cabinet (DUEL and EXTRACT only).' },
     { Icon: ShieldIcon, name: 'Shield', text: 'Returns 50% of the stake on a LOSE. A REFUND already returns everything.' },
-    { Icon: TrophyIcon, name: 'Trophy', text: 'Minted to you on every WIN and JACKPOT.' },
+    { Icon: TrophyIcon, name: 'Trophy', text: "Minted to you on every WIN and JACKPOT. Trophies can be redeemed at the Store's Forge (Sword 2, Shield 3)." },
   ]
   return (
     <div className="card p-4 sm:p-6">
@@ -594,7 +594,11 @@ function ResultBanner({ result, onClose }: { result: ArcadeResult; onClose: () =
               ? `Shield refund: ${formatToken(result.payout)} VLAD returned.`
               : !won
                 ? 'Your stake stays in the Arcade prize pool.'
-                : ''}
+                : (
+                  <a className="link inline-flex items-center gap-1" href={`${getSite('store').url}#forge`}>
+                    Forge a Sword (2 trophies) or Shield (3) at the Store <ExternalIcon />
+                  </a>
+                )}
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button type="button" className="btn btn-ghost" onClick={onClose}>
